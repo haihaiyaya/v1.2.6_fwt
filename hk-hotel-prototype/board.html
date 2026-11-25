@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-HK">
+<head><meta charset="utf-8"><title>設計看板</title>
+<style>
+body{margin:0;background:#F2F4F8;font-family:-apple-system,"PingFang HK","Microsoft JhengHei","Noto Sans HK",sans-serif;color:#0F1418;}
+.wrap{width:1560px;padding:48px 40px 56px;}
+h1{margin:0;font-size:30px;letter-spacing:.5px;}
+.sub{margin-top:10px;font-size:14px;color:#7D8694;letter-spacing:.3px;}
+.tag{display:inline-block;margin-right:8px;padding:3px 10px;border-radius:6px;background:#E8F3FF;color:#0E86F2;font-size:12px;}
+.grid{display:grid;grid-template-columns:repeat(5,280px);gap:36px 30px;margin-top:36px;}
+.cell{text-align:center;}
+.cell img{width:280px;border-radius:14px;box-shadow:0 6px 18px rgba(20,35,60,.12);display:block;}
+.cell .no{font-size:11px;color:#A2AAB6;margin-top:12px;letter-spacing:1px;}
+.cell .nm{font-size:13px;margin-top:4px;color:#2A3038;}
+</style></head>
+<body><div class="wrap">
+<h1>星煥九號酒店 · 香港繁體版小程序原型</h1>
+<div class="sub"><span class="tag">繁體（香港）</span><span class="tag">390 × 844</span><span class="tag">20 屏</span>　酒店服務請求 · 工單跟進 · 酒店介紹 · AI 問答　｜　用詞與格式按香港習慣重寫，非簡轉繁直譯</div>
+<div class="grid" id="g"></div>
+</div>
+<script>
+const items = [
+ ['01-home','首頁'],['02-clean','房間清潔'],['03-clean2','房間清潔・預約'],['04-home-renew','首頁・續住確認'],['05-home-wifi','首頁・Wi-Fi 資訊'],
+ ['06-goods','客房送物'],['07-checkout','確認訂單'],['08-orders','我的訂單'],['09-order-detail','訂單詳情'],['10-repair','設施報修'],
+ ['11-feedback','意見反饋'],['12-guide','服務指南'],['13-ai','AI 助手'],['14-me','我的'],['15-receipt-title','收據・擡頭管理'],
+ ['16-receipt-list','收據列表'],['17-receipt-detail','收據詳情'],['18-messages','訊息通知'],['19-review','服務評價'],['20-service-detail','服務詳情']
+];
+document.getElementById('g').innerHTML = items.map(([f,n],i)=>`<div class="cell"><img src="preview/${f}.png"><div class="no">${String(i+1).padStart(2,'0')}</div><div class="nm">${n}</div></div>`).join('');
+</script>
+</body></html>

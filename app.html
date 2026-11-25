@@ -1,0 +1,3724 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>云居 · 运营驾驶舱（移动端）</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', '"PingFang SC"', '"Hiragino Sans GB"', '"Microsoft YaHei"', 'sans-serif'],
+            mono: ['Inter', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'monospace']
+          },
+          colors: {
+            brand: {
+              DEFAULT: '#1677FF',
+              hover: '#0958D9',
+              soft: '#F4F8FF',
+              purple: '#7C5CFF',
+              amber: '#FA9D26',
+              orange: '#FA8C16',
+              coral: '#F25C5C',
+              teal: '#13C2C2',
+              emerald: '#10B981'
+            }
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    /* 全局抗锯齿、等宽数字与原生触控优化 */
+    html, body {
+      -webkit-tap-highlight-color: transparent;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    }
+    .tabular-nums {
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* 隐藏横向滑动滚动条（图例条 / 锚点条） */
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+
+    /* 精致微细纵向滚动条（桌面预览态） */
+    .mobile-scroll::-webkit-scrollbar {
+      width: 4px;
+    }
+    .mobile-scroll::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .mobile-scroll::-webkit-scrollbar-thumb {
+      background-color: rgba(148, 163, 184, 0.32);
+      border-radius: 9999px;
+    }
+
+    /* 实时状态呼吸蓝点 */
+    @keyframes pulse-ring {
+      0% { transform: scale(0.85); opacity: 0.78; }
+      75% { transform: scale(2.15); opacity: 0; }
+      100% { transform: scale(2.15); opacity: 0; }
+    }
+    .status-pulse::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: 9999px;
+      background-color: #1677FF;
+      animation: pulse-ring 2.2s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+    }
+
+    /* Toast 轻提示动效（严格限制在手机容器内部居中） */
+    .toast-hidden {
+      transform: translate(-50%, -10px);
+      opacity: 0;
+      pointer-events: none;
+    }
+    .toast-visible {
+      transform: translate(-50%, 0);
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    /* 统一移动端企业级卡片规范 */
+    .m-card {
+      background-color: #ffffff;
+      border-radius: 14px;
+      border: 1px solid #E6ECF5;
+      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.025), 0 4px 12px rgba(15, 23, 42, 0.02);
+    }
+
+    /* 两行文本截断 */
+    .line-clamp-2 {
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    /* ==================================================================
+     * 数据下钻 · 视图与组件体系（通话记录 / AI处理率 / 工单）
+     * ================================================================== */
+    .view-base { position: absolute; inset: 0; display: flex; flex-direction: column; }
+
+    .view {
+      position: absolute; inset: 0; z-index: 40;
+      display: flex; flex-direction: column;
+      background: #F3F6FA;
+      transform: translateX(100%);
+      box-shadow: -14px 0 32px rgba(15,23,42,.10);
+    }
+    .view[data-state="on"] { transform: translateX(0); }
+    .view[data-state="under"] { transform: translateX(-22%); }
+
+    .page-head {
+      flex: 0 0 auto; display: flex; align-items: center; gap: 9px;
+      padding: 8px 12px; background: #fff; border-bottom: 1px solid #E6ECF5;
+    }
+    .back-btn {
+      flex: 0 0 auto; width: 34px; height: 34px; display: grid; place-items: center;
+      border-radius: 10px; background: #F4F7FB; border: 1px solid #E3EAF4; color: #334155;
+    }
+    .back-btn:active { transform: scale(.95); background: #EAF1FB; }
+    .page-title { font-size: 15px; font-weight: 700; color: #0F172A; line-height: 1.2; letter-spacing: -.2px; }
+    .page-sub { font-size: 10.5px; color: #94A3B8; margin-top: 3px; }
+    .head-tag {
+      flex: 0 0 auto; font-size: 10.5px; font-weight: 700; color: #1677FF;
+      background: #F0F7FF; border: 1px solid #D7E6FF; border-radius: 999px;
+      padding: 3px 8px; font-variant-numeric: tabular-nums;
+    }
+
+    .seg { display: flex; gap: 3px; padding: 3px; background: #F2F5FA; border: 1px solid #E5ECF5; border-radius: 10px; }
+    .seg-btn {
+      flex: 1 1 0; min-height: 30px; border-radius: 8px; font-size: 11.5px; font-weight: 600;
+      color: #64748B; display: inline-flex; align-items: center; justify-content: center;
+      gap: 4px; white-space: nowrap;
+    }
+    .seg-btn.is-on { background: #1677FF; color: #fff; box-shadow: 0 2px 6px rgba(22,119,255,.26); }
+    .seg-btn em { font-style: normal; font-size: 10px; opacity: .82; font-variant-numeric: tabular-nums; }
+
+    .filter-wrap {
+      flex: 0 0 auto; display: flex; flex-direction: column; gap: 7px;
+      padding: 8px 12px 9px; background: #fff; border-bottom: 1px solid #E9EFF7;
+    }
+    .filter-row { display: flex; align-items: center; gap: 8px; min-width: 0; }
+    .filter-label { flex: 0 0 auto; width: 44px; font-size: 11px; color: #8A94A6; }
+    .chips { display: flex; gap: 6px; overflow-x: auto; padding: 1px 0; scrollbar-width: none; -ms-overflow-style: none; }
+    .chips::-webkit-scrollbar { display: none; }
+    .chip {
+      flex: 0 0 auto; height: 28px; padding: 0 10px; border-radius: 8px; border: 1px solid #E3EAF4;
+      background: #fff; color: #64748B; font-size: 11.5px; font-weight: 500; white-space: nowrap;
+    }
+    .chip.is-on { border-color: #1677FF; background: #F0F7FF; color: #1677FF; font-weight: 700; }
+    .chip:active { transform: scale(.97); }
+
+    .search-box {
+      flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: 6px; height: 32px;
+      padding: 0 9px; background: #F8FAFC; border: 1px solid #E3EAF4; border-radius: 9px;
+    }
+    .search-box input {
+      flex: 1 1 auto; min-width: 0; border: 0; background: transparent; outline: none;
+      font-size: 12px; color: #0F172A;
+    }
+    .search-box input::placeholder { color: #A9B4C4; }
+    .date-pill {
+      flex: 0 0 auto; height: 32px; display: inline-flex; align-items: center; gap: 5px; padding: 0 9px;
+      background: #fff; border: 1px solid #E3EAF4; border-radius: 9px;
+      font-size: 11px; font-weight: 600; color: #475569; font-variant-numeric: tabular-nums;
+    }
+    .date-pill:active { background: #F4F8FF; }
+
+    .page-scroll {
+      flex: 1 1 auto; overflow-y: auto; overflow-x: hidden;
+      padding: 9px 12px calc(20px + env(safe-area-inset-bottom));
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .active-strip {
+      display: flex; align-items: center; justify-content: space-between; gap: 10px;
+      margin-bottom: 8px; padding: 0 2px; font-size: 11px; color: #8A94A6;
+    }
+    .active-strip > span {
+      flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .link-reset { flex: 0 0 auto; font-size: 11px; font-weight: 600; color: #1677FF; }
+    #call-active, #order-active {
+      display: flex; align-items: center; gap: 10px;
+      margin-bottom: 8px; padding: 0 2px; font-size: 11px; color: #8A94A6;
+    }
+    #call-active > span, #order-active > span {
+      flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+
+    /* ---------- 三行列表卡 ---------- */
+    .rec-list { display: flex; flex-direction: column; gap: 8px; }
+    .rec-card {
+      background: #fff; border: 1px solid #E6ECF5; border-radius: 14px; padding: 9px 11px 8px;
+      box-shadow: 0 1px 2px rgba(15,23,42,.03);
+    }
+    .rec-card:active { background: #F8FBFF; }
+    .rec-l1, .rec-l2, .rec-l3 { display: flex; align-items: center; gap: 6px; }
+    .rec-l1 .spacer, .rec-l2 .spacer { flex: 1 1 auto; }
+    .rec-time { font-size: 12px; font-weight: 700; color: #0F172A; font-variant-numeric: tabular-nums; }
+    .mini-play {
+      flex: 0 0 auto; width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center;
+      background: #F0F7FF; border: 1px solid #CBE0FF; color: #1677FF;
+    }
+    .mini-play.is-playing { background: #1677FF; border-color: #1677FF; color: #fff; }
+    .rec-l2 { margin-top: 5px; }
+    .rec-num {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 12px; font-weight: 600; color: #334155; letter-spacing: .2px;
+    }
+    .rec-arrow { color: #CBD5E1; font-size: 11px; }
+    .rec-room { font-size: 11.5px; color: #64748B; font-variant-numeric: tabular-nums; }
+    .rec-l3 { margin-top: 5px; align-items: flex-start; }
+    .rec-text {
+      flex: 1 1 auto; min-width: 0; font-size: 11.5px; line-height: 1.35; color: #64748B;
+      display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden;
+    }
+    .rec-go { flex: 0 0 auto; font-size: 11px; font-weight: 600; color: #1677FF; padding-left: 4px; }
+    .rec-prog { height: 2px; margin-top: 7px; background: #EEF3F9; border-radius: 999px; overflow: hidden; }
+    .rec-prog i {
+      display: block; height: 100%; width: 0; background: #1677FF; border-radius: 999px;
+      animation-name: progGrow; animation-timing-function: linear; animation-fill-mode: forwards;
+    }
+    @keyframes progGrow { from { width: 0; } to { width: 100%; } }
+
+    .tag {
+      flex: 0 0 auto; display: inline-flex; align-items: center; height: 18px; padding: 0 6px;
+      border-radius: 5px; font-size: 10.5px; font-weight: 600; white-space: nowrap;
+    }
+    .tag-blue { background: #F0F7FF; color: #1677FF; }
+    .tag-teal { background: #E6FFFB; color: #08979C; }
+    .tag-red { background: #FFF1F0; color: #F25C5C; }
+    .tag-amber { background: #FFF7E6; color: #D48806; }
+    .tag-purple { background: #F5F1FF; color: #7C5CFF; }
+    .tag-green { background: #ECFDF5; color: #059669; }
+    .tag-gray { background: #F1F5F9; color: #64748B; }
+    .tag-outline { background: #fff; color: #64748B; border: 1px solid #E3EAF4; }
+
+    .load-tip { padding: 14px 0 6px; text-align: center; font-size: 11px; color: #A3AEC0; }
+    .empty { padding: 46px 16px; text-align: center; }
+    .empty svg { margin: 0 auto 10px; color: #C7D2E0; }
+    .empty p { font-size: 12.5px; color: #8A94A6; }
+    .empty small { display: block; margin-top: 6px; font-size: 11px; color: #A9B4C4; }
+
+    /* ---------- 明细卡 ---------- */
+    .d-card {
+      background: #fff; border: 1px solid #E6ECF5; border-radius: 14px; padding: 12px;
+      box-shadow: 0 1px 2px rgba(15,23,42,.03);
+    }
+    .d-title {
+      display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; color: #1E293B;
+      padding-bottom: 9px; margin-bottom: 10px; border-bottom: 1px solid #F1F5F9;
+    }
+    .d-title .bar { width: 3px; height: 12px; border-radius: 999px; background: #1677FF; }
+    .d-title .right { margin-left: auto; display: flex; align-items: center; gap: 5px; }
+    .kv { display: flex; align-items: flex-start; gap: 10px; padding: 7px 0; border-bottom: 1px dashed #F1F5F9; }
+    .kv:last-child { border-bottom: 0; padding-bottom: 0; }
+    .kv-k { flex: 0 0 auto; width: 88px; font-size: 11.5px; color: #8A94A6; }
+    .kv-v {
+      flex: 1 1 auto; min-width: 0; font-size: 12px; color: #1E293B; font-weight: 500;
+      text-align: right; word-break: break-all;
+    }
+    .kv-v.mono { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 11.5px; }
+    .kv-v.muted { color: #A3AEC0; font-weight: 400; }
+
+    /* 播放器 */
+    .player {
+      display: flex; align-items: center; gap: 9px; padding: 9px 10px;
+      background: #F7F9FC; border: 1px solid #E9EFF7; border-radius: 11px;
+    }
+    .player-play {
+      flex: 0 0 auto; width: 28px; height: 28px; border-radius: 999px; display: grid; place-items: center;
+      background: #1677FF; color: #fff; box-shadow: 0 2px 6px rgba(22,119,255,.28);
+    }
+    .player-play.is-playing { background: #0958D9; }
+    .player-track {
+      flex: 1 1 auto; height: 4px; background: #E2E8F0; border-radius: 999px;
+      position: relative; overflow: hidden;
+    }
+    .player-fill {
+      position: absolute; left: 0; top: 0; height: 100%; width: 0;
+      background: #1677FF; border-radius: 999px; transition: width .3s linear;
+    }
+    .player-time { flex: 0 0 auto; font-size: 11px; color: #64748B; font-variant-numeric: tabular-nums; }
+
+    /* 时间轴 */
+    .tl { position: relative; padding-left: 14px; }
+    .tl::before { content: ''; position: absolute; left: 3px; top: 4px; bottom: 6px; width: 1px; background: #E6ECF5; }
+    .tl-item { position: relative; padding: 0 0 14px; }
+    .tl-item:last-child { padding-bottom: 0; }
+    .tl-dot {
+      position: absolute; left: -14px; top: 4px; width: 7px; height: 7px; border-radius: 999px;
+      background: #1677FF; box-shadow: 0 0 0 3px #fff;
+    }
+    .tl-dot.gray { background: #CBD5E1; }
+    .tl-head { display: flex; align-items: center; gap: 8px; }
+    .tl-name { font-size: 12.5px; font-weight: 700; color: #1E293B; }
+    .tl-time { margin-left: auto; font-size: 10.5px; color: #94A3B8; font-variant-numeric: tabular-nums; }
+    .tl-sub { margin-top: 3px; font-size: 11px; color: #8A94A6; }
+
+    /* ---------- AI 处理率 ---------- */
+    .ai-sum {
+      background: linear-gradient(135deg,#F7F5FF 0%,#F4F8FF 100%);
+      border: 1px solid #E6E4FF; border-radius: 14px; padding: 13px; margin-bottom: 9px;
+    }
+    .ai-sum-main { display: flex; align-items: baseline; gap: 2px; }
+    .ai-sum-main b {
+      font-size: 30px; line-height: 1; font-weight: 800; color: #1E1B4B; letter-spacing: -1px;
+      font-variant-numeric: tabular-nums;
+    }
+    .ai-sum-main em { font-size: 14px; font-weight: 700; color: #7C5CFF; font-style: normal; }
+    .ai-sum-main p { margin-left: auto; font-size: 11px; color: #6B7280; }
+    .ai-sum-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 6px; margin-top: 11px; }
+    .ai-sum-cell {
+      background: rgba(255,255,255,.88); border: 1px solid #E9E8FF; border-radius: 9px; padding: 6px 7px;
+    }
+    .ai-sum-cell span { display: block; font-size: 10px; color: #8A94A6; }
+    .ai-sum-cell b { font-size: 13px; font-weight: 700; color: #1E293B; font-variant-numeric: tabular-nums; }
+    .ai-card {
+      background: #fff; border: 1px solid #E6ECF5; border-radius: 14px; padding: 10px 11px;
+      cursor: pointer; transition: border-color .15s;
+    }
+    .ai-card:active { border-color: #BFD6FF; background: #FBFDFF; }
+    .ai-l1 { display: flex; align-items: center; gap: 7px; }
+    .ai-date { font-size: 12.5px; font-weight: 700; color: #0F172A; font-variant-numeric: tabular-nums; }
+    .ai-date i { font-style: normal; font-size: 10.5px; font-weight: 500; color: #94A3B8; margin-left: 3px; }
+    .ai-go { margin-left: auto; font-size: 10.5px; font-weight: 600; color: #1677FF; }
+    .ai-metrics { display: grid; grid-template-columns: repeat(3,1fr); gap: 5px; margin-top: 8px; }
+    .ai-cell {
+      min-width: 0; padding: 5px 7px; border-radius: 8px; background: #F7F9FC; border: 1px solid #EDF2F9;
+    }
+    .ai-cell:active { background: #EEF5FF; }
+    .ai-lab {
+      display: block; font-size: 9.5px; line-height: 1.25; color: #8A94A6;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .ai-val {
+      display: block; margin-top: 1px; font-size: 13.5px; font-weight: 800; line-height: 1.15;
+      color: #1E293B; font-variant-numeric: tabular-nums; white-space: nowrap;
+    }
+    .ai-val small { font-size: 10px; font-weight: 600; color: #94A3B8; margin-left: 1px; }
+    .ai-val.is-out { color: #1677FF; }
+    .ai-val.is-inn { color: #08979C; }
+    .ai-val.is-ai { color: #7C5CFF; }
+    .ai-row { display: flex; align-items: center; gap: 6px; margin-top: 7px; font-size: 11.5px; color: #475569; }
+    .ai-dot { flex: 0 0 auto; width: 6px; height: 6px; border-radius: 999px; }
+    .ai-row b { font-weight: 700; color: #1E293B; font-variant-numeric: tabular-nums; }
+    .ai-bar { flex: 1 1 auto; min-width: 28px; height: 4px; background: #EEF2F8; border-radius: 999px; overflow: hidden; }
+    .ai-bar i { display: block; height: 100%; border-radius: 999px; }
+    .ai-rate {
+      flex: 0 0 auto; width: 50px; text-align: right; font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* ---------- 底部弹层 ---------- */
+    .sheet-mask {
+      position: absolute; inset: 0; z-index: 60; background: rgba(15,23,42,.44);
+      opacity: 0; pointer-events: none; transition: opacity .22s;
+    }
+    .sheet-mask.is-open { opacity: 1; pointer-events: auto; }
+    .sheet-panel {
+      position: absolute; left: 0; right: 0; bottom: 0; z-index: 61; background: #fff;
+      border-radius: 18px 18px 0 0; transform: translateY(101%);
+      transition: transform .3s cubic-bezier(.22,.61,.36,1);
+      max-height: 84%; display: flex; flex-direction: column;
+    }
+    .sheet-panel.is-open { transform: translateY(0); }
+    .sheet-head { flex: 0 0 auto; display: flex; align-items: center; padding: 14px 16px 6px; }
+    .sheet-head strong { font-size: 14px; color: #0F172A; }
+    .sheet-x { margin-left: auto; width: 28px; height: 28px; display: grid; place-items: center; color: #8A94A6; font-size: 18px; }
+    .sheet-body { flex: 1 1 auto; overflow-y: auto; padding: 4px 16px 12px; }
+    .sheet-foot {
+      flex: 0 0 auto; display: flex; gap: 10px; padding: 10px 16px calc(12px + env(safe-area-inset-bottom));
+      border-top: 1px solid #F1F5F9;
+    }
+    .btn-ghost {
+      flex: 1 1 0; min-height: 42px; border-radius: 11px; background: #F4F7FB; border: 1px solid #E3EAF4;
+      font-size: 12.5px; font-weight: 600; color: #64748B;
+    }
+    .btn-primary {
+      flex: 2 1 0; min-height: 42px; border-radius: 11px; background: #1677FF; color: #fff;
+      font-size: 12.5px; font-weight: 700; box-shadow: 0 3px 10px rgba(22,119,255,.26);
+    }
+    .sheet-group { padding: 10px 0 2px; }
+    .sheet-group > h4 { font-size: 11.5px; font-weight: 700; color: #8A94A6; margin-bottom: 7px; }
+    .sheet-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+    .sheet-input {
+      width: 100%; height: 36px; border: 1px solid #E3EAF4; border-radius: 9px; background: #F8FAFC;
+      padding: 0 10px; font-size: 12px; color: #0F172A; outline: none;
+    }
+    .sheet-dates { display: flex; align-items: center; gap: 6px; }
+    .sheet-dates input {
+      flex: 1 1 0; min-width: 0; height: 36px; border: 1px solid #E3EAF4; border-radius: 9px;
+      background: #F8FAFC; padding: 0 8px; font-size: 11.5px; color: #334155;
+    }
+    .sheet-dates em { font-style: normal; color: #A3AEC0; font-size: 11px; }
+
+    /* ---------- 概览页下钻入口提示 ---------- */
+    .drill-note {
+      display: flex; align-items: center; justify-content: flex-end; gap: 2px;
+      padding-top: 8px; font-size: 10.5px; color: #A3AEC0;
+    }
+    .is-drill { cursor: pointer; }
+    .is-drill:active { opacity: .82; }
+  </style>
+</head>
+<body class="bg-[#F3F6FA] sm:bg-[#E7EEF7] text-slate-800 m-0 p-0 sm:py-5 sm:px-4 min-h-[100dvh] flex justify-center items-start overflow-x-hidden">
+
+  <!-- ==================== 移动端视口外壳（375px 基准，最大 430px，移动端全屏铺满） ==================== -->
+  <div id="mobile-shell"
+    class="relative w-full sm:max-w-[430px] h-[100dvh] sm:h-[calc(100dvh-40px)] sm:max-h-[880px] bg-[#F3F6FA] sm:rounded-[30px] sm:border sm:border-slate-200/90 sm:shadow-[0_24px_64px_rgba(15,23,42,0.14),0_0_0_6px_rgba(255,255,255,0.82)] flex flex-col overflow-hidden">
+
+    <!-- ==================== 视图 1：运营概览（原有首页，全部数字可下钻） ==================== -->
+    <div id="view-overview" class="view-base">
+
+    <!-- ==================== 顶部吸顶区（两层紧凑结构） ==================== -->
+    <header class="shrink-0 bg-white/95 backdrop-blur-md border-b border-[#E6ECF5] z-30 shadow-[0_1px_4px_rgba(15,23,42,0.03)]">
+      <!-- 第一层：品牌标题 + 右侧周期筛选标签 -->
+      <div class="px-3 pt-2.5 pb-2 flex items-center justify-between gap-2">
+        <div class="flex items-center gap-2 min-w-0">
+          <div class="w-7 h-7 rounded-[9px] bg-gradient-to-br from-[#3B9BFF] to-[#1677FF] text-white flex items-center justify-center shrink-0 shadow-[0_3px_8px_rgba(22,119,255,0.28)]">
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 21h18" />
+              <path d="M5 21V7a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v14" />
+              <path d="M9 21v-4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v4" />
+              <path d="M9 9h1M14 9h1M9 12.5h1M14 12.5h1" />
+            </svg>
+          </div>
+          <h1 class="text-[14px] font-bold text-slate-900 tracking-tight truncate">云居·运营驾驶舱</h1>
+        </div>
+
+        <!-- 右侧统计周期胶囊分段器 -->
+        <div id="period-control" class="inline-flex items-center gap-0.5 p-[2.5px] rounded-lg bg-[#F2F5FA] border border-[#E5ECF5] shrink-0" role="tablist" aria-label="统计周期">
+          <button type="button" data-period="yesterday" role="tab" aria-selected="false"
+            class="period-btn min-h-[28px] px-2 text-[11px] font-medium rounded-md text-slate-600 whitespace-nowrap active:scale-[0.97] transition-all cursor-pointer">
+            昨日
+          </button>
+          <button type="button" data-period="7d" role="tab" aria-selected="false"
+            class="period-btn min-h-[28px] px-2 text-[11px] font-medium rounded-md text-slate-600 whitespace-nowrap active:scale-[0.97] transition-all cursor-pointer">
+            近7天
+          </button>
+          <button type="button" data-period="30d" role="tab" aria-selected="true"
+            class="period-btn min-h-[28px] px-2 text-[11px] font-semibold rounded-md bg-[#1677FF] text-white shadow-[0_2px_6px_rgba(22,119,255,0.28)] whitespace-nowrap active:scale-[0.97] transition-all cursor-pointer">
+            近30天
+          </button>
+        </div>
+      </div>
+
+      <!-- 第二层：吸顶快捷锚点条（4 等分左右平均分布） -->
+      <nav id="anchor-nav" class="px-3 pb-2.5 grid grid-cols-4 gap-1.5" aria-label="模块快捷导航">
+        <button type="button" data-target="sec-overview"
+          class="anchor-btn w-full min-h-[30px] px-1 rounded-full text-[11.5px] font-semibold bg-[#F0F7FF] text-[#1677FF] border border-[#CBE0FF] flex items-center justify-center whitespace-nowrap active:scale-[0.97] transition-all cursor-pointer">
+          核心概览
+        </button>
+        <button type="button" data-target="sec-ranking"
+          class="anchor-btn w-full min-h-[30px] px-1 rounded-full text-[11.5px] font-medium bg-[#F8FAFC] text-slate-500 border border-slate-200/70 flex items-center justify-center whitespace-nowrap active:scale-[0.97] transition-all cursor-pointer">
+          Top 排行
+        </button>
+        <button type="button" data-target="sec-trends"
+          class="anchor-btn w-full min-h-[30px] px-1 rounded-full text-[11.5px] font-medium bg-[#F8FAFC] text-slate-500 border border-slate-200/70 flex items-center justify-center whitespace-nowrap active:scale-[0.97] transition-all cursor-pointer">
+          趋势洞察
+        </button>
+        <button type="button" data-target="sec-feed"
+          class="anchor-btn w-full min-h-[30px] px-1 rounded-full text-[11.5px] font-medium bg-[#F8FAFC] text-slate-500 border border-slate-200/70 flex items-center justify-center whitespace-nowrap active:scale-[0.97] transition-all cursor-pointer">
+          实时动态
+        </button>
+      </nav>
+    </header>
+
+    <!-- ==================== 移动端顶部居中 Toast（限制在容器内不溢出） ==================== -->
+    <div id="toast-box"
+      class="absolute top-[98px] left-1/2 z-50 w-[calc(100%-28px)] max-w-[380px] transition-all duration-200 toast-hidden"
+      role="status" aria-live="polite">
+      <div class="flex items-start gap-2 bg-slate-900/95 text-white text-[12px] leading-snug font-medium px-3.5 py-2.5 rounded-xl shadow-[0_10px_28px_rgba(15,23,42,0.24)] border border-slate-700/80">
+        <svg class="w-4 h-4 text-[#3B9BFF] shrink-0 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="9" />
+          <path d="M12 8v4" />
+          <path d="M12 16h.01" />
+        </svg>
+        <span id="toast-text" class="flex-1">提示信息</span>
+      </div>
+    </div>
+
+    <!-- ==================== 主体独立纵向滚动区 ==================== -->
+    <main id="scroll-container" class="flex-1 overflow-y-auto overflow-x-hidden mobile-scroll scroll-smooth px-3 pt-3 pb-[calc(24px+env(safe-area-inset-bottom))]">
+      <div class="space-y-3">
+
+        <!-- =============================================================== -->
+        <!-- 锚点区块 1：核心概览（话务概览 + 来电分布 + 工单数据） -->
+        <!-- =============================================================== -->
+        <section id="sec-overview" class="space-y-3 scroll-mt-3">
+
+          <!-- 模块一：话务概览 -->
+          <article class="m-card p-3.5">
+            <div class="flex items-center justify-between gap-2 pb-2.5 mb-3 border-b border-slate-100">
+              <div class="flex items-center gap-2 min-w-0">
+                <span class="w-[3px] h-3.5 rounded-full bg-[#1677FF] shrink-0"></span>
+                <svg class="w-4 h-4 text-[#1677FF] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
+                </svg>
+                <h2 class="text-[14px] font-semibold text-[#1E293B]">话务概览</h2>
+              </div>
+              <span class="inline-flex items-center gap-1 text-[11px] text-slate-400">
+                <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="9" />
+                  <path d="M12 16v-4M12 8h.01" />
+                </svg>
+                环比上期
+              </span>
+            </div>
+
+            <!-- 上半区：话务总数 & AI 处理率 2 列并排等高子卡 -->
+            <div class="grid grid-cols-2 gap-2.5 mb-3">
+              <!-- 左卡：话务总数 -->
+              <div id="card-total-calls" role="button" tabindex="0" aria-label="查看通话记录"
+                class="relative is-drill bg-[#F5F9FF] rounded-xl p-3 border border-[#E4EEFF] flex flex-col justify-between gap-2">
+                <span class="absolute right-2.5 top-2 text-[11px] font-bold text-[#1677FF]/55">›</span>
+                <div class="flex items-center gap-1.5">
+                  <div class="w-[22px] h-[22px] rounded-md bg-[#1677FF] text-white flex items-center justify-center shrink-0 shadow-[0_2px_5px_rgba(22,119,255,0.25)]">
+                    <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
+                    </svg>
+                  </div>
+                  <span class="text-[12px] font-medium text-slate-600">话务总数</span>
+                </div>
+                <div class="flex items-baseline gap-1 tabular-nums">
+                  <span class="text-[23px] leading-none font-bold text-slate-900 tracking-tight">4,754</span>
+                  <span class="text-[11px] font-medium text-slate-500">通</span>
+                </div>
+                <div class="flex items-center justify-between gap-1 text-[10.5px] tabular-nums">
+                  <span class="inline-flex items-center px-1.5 py-0.5 rounded bg-[#FFF1F0] text-[#F25C5C] font-semibold whitespace-nowrap">↓ -14.17%</span>
+                  <span class="text-slate-400 truncate">环比上期</span>
+                </div>
+              </div>
+
+              <!-- 右卡：AI 处理率 -->
+              <div id="card-ai-rate" role="button" tabindex="0" aria-label="查看每日 AI 处理率"
+                class="relative is-drill bg-[#F7F5FF] rounded-xl p-3 border border-[#EAE4FF] flex flex-col justify-between gap-2">
+                <span class="absolute right-2.5 top-2 text-[11px] font-bold text-[#7C5CFF]/55">›</span>
+                <div class="flex items-center gap-1.5">
+                  <div class="w-[22px] h-[22px] rounded-md bg-[#7C5CFF] text-white flex items-center justify-center shrink-0 shadow-[0_2px_5px_rgba(124,92,255,0.25)]">
+                    <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <rect x="4" y="4" width="16" height="16" rx="2" />
+                      <rect x="9" y="9" width="6" height="6" rx="1" />
+                      <path d="M9 1v3M15 1v3M9 20v3M15 20v3M20 9h3M20 14h3M1 9h3M1 14h3" />
+                    </svg>
+                  </div>
+                  <span class="text-[12px] font-medium text-slate-600">AI 处理率</span>
+                </div>
+                <div class="flex items-baseline gap-0.5 tabular-nums">
+                  <span class="text-[23px] leading-none font-bold text-slate-900 tracking-tight">83.36</span>
+                  <span class="text-[13px] font-bold text-[#7C5CFF]">%</span>
+                </div>
+                <div class="flex items-center justify-between gap-1 text-[10.5px] tabular-nums">
+                  <span class="inline-flex items-center px-1.5 py-0.5 rounded bg-[#ECFDF5] text-[#10B981] font-semibold whitespace-nowrap">↑ +4.29%</span>
+                  <span class="text-slate-500 truncate" title="3,963 通 AI 处理">3,963 通AI</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- 下半区：内外线占比条 + 2 列并排可点击高亮小卡 -->
+            <div class="bg-[#F8FAFC] rounded-xl p-3 border border-[#EDF2F7]">
+              <div class="flex items-center justify-between text-[12px] mb-2">
+                <div class="flex items-center gap-1.5">
+                  <span class="font-semibold text-slate-700">内外线占比</span>
+                  <span id="line-hint" class="text-[10.5px] text-slate-400">点击卡片查看通话明细</span>
+                </div>
+                <span class="text-[11px] font-medium text-slate-500 tabular-nums">合计 4,754 通</span>
+              </div>
+
+              <!-- 双色水平比例条（支持点击切换高亮） -->
+              <div class="w-full h-2.5 rounded-full bg-slate-200/75 overflow-hidden flex gap-0.5 p-0.5 mb-2.5">
+                <button type="button" id="bar-outbound" data-line="outbound" aria-label="高亮外线电话 33.00%"
+                  class="line-trigger h-full rounded-l-full bg-[#1677FF] transition-all duration-200 cursor-pointer"
+                  style="width: 33%;"></button>
+                <button type="button" id="bar-inbound" data-line="inbound" aria-label="高亮内线电话 67.00%"
+                  class="line-trigger h-full rounded-r-full bg-[#13C2C2] transition-all duration-200 cursor-pointer"
+                  style="width: 67%;"></button>
+              </div>
+
+              <!-- 外线 / 内线 2 列并排小卡 -->
+              <div class="grid grid-cols-2 gap-2">
+                <button type="button" id="row-outbound" data-line="outbound" aria-pressed="false"
+                  class="line-trigger text-left px-2.5 py-2.5 rounded-xl bg-white border border-slate-200/70 active:scale-[0.98] transition-all cursor-pointer">
+                  <div class="flex items-center justify-between gap-1 mb-1">
+                    <span class="inline-flex items-center gap-1 text-[11.5px] font-medium text-slate-600 whitespace-nowrap">
+                      <span class="w-2 h-2 rounded-full bg-[#1677FF] shrink-0"></span>
+                      外线电话
+                    </span>
+                    <span class="text-[10.5px] font-semibold text-[#1677FF] bg-[#F0F7FF] px-1.5 py-0.5 rounded tabular-nums">33.00%</span>
+                  </div>
+                  <div class="text-[16px] leading-tight font-bold text-slate-900 tabular-nums pl-3">
+                    1,569 <span class="text-[11px] font-normal text-slate-400">通</span>
+                  </div>
+                </button>
+
+                <button type="button" id="row-inbound" data-line="inbound" aria-pressed="false"
+                  class="line-trigger text-left px-2.5 py-2.5 rounded-xl bg-white border border-slate-200/70 active:scale-[0.98] transition-all cursor-pointer">
+                  <div class="flex items-center justify-between gap-1 mb-1">
+                    <span class="inline-flex items-center gap-1 text-[11.5px] font-medium text-slate-600 whitespace-nowrap">
+                      <span class="w-2 h-2 rounded-full bg-[#13C2C2] shrink-0"></span>
+                      内线电话
+                    </span>
+                    <span class="text-[10.5px] font-semibold text-[#08979C] bg-[#E6FFFB] px-1.5 py-0.5 rounded tabular-nums">67.00%</span>
+                  </div>
+                  <div class="text-[16px] leading-tight font-bold text-slate-900 tabular-nums pl-3">
+                    3,185 <span class="text-[11px] font-normal text-slate-400">通</span>
+                  </div>
+                </button>
+              </div>
+            </div>
+          </article>
+
+          <!-- 模块二：来电分布（6 类紧凑双行列表） -->
+          <article class="m-card p-3.5">
+            <div class="flex items-center justify-between gap-2 pb-2.5 mb-2.5 border-b border-slate-100">
+              <div class="flex items-center gap-2 min-w-0">
+                <span class="w-[3px] h-3.5 rounded-full bg-[#1677FF] shrink-0"></span>
+                <svg class="w-4 h-4 text-[#1677FF] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="8" y1="6" x2="21" y2="6" />
+                  <line x1="8" y1="12" x2="21" y2="12" />
+                  <line x1="8" y1="18" x2="21" y2="18" />
+                  <line x1="3" y1="6" x2="3.01" y2="6" />
+                  <line x1="3" y1="12" x2="3.01" y2="12" />
+                  <line x1="3" y1="18" x2="3.01" y2="18" />
+                </svg>
+                <h2 class="text-[14px] font-semibold text-[#1E293B]">来电分布</h2>
+              </div>
+              <span class="text-[11px] text-slate-500 bg-[#F7F9FC] border border-[#E8EEF5] px-2 py-0.5 rounded-full tabular-nums shrink-0">
+                6 类，合计 4,327 通
+              </span>
+            </div>
+
+            <div id="call-distribution-list" class="space-y-2.5"></div>
+            <p class="drill-note">点击任一分类可查看该分类通话明细 ›</p>
+          </article>
+
+          <!-- 模块三：工单数据（2 列 × 3 行浅底彩色图标矩阵） -->
+          <article class="m-card p-3.5">
+            <div class="flex items-center justify-between gap-2 pb-2.5 mb-3 border-b border-slate-100">
+              <div class="flex items-center gap-2 min-w-0">
+                <span class="w-[3px] h-3.5 rounded-full bg-[#1677FF] shrink-0"></span>
+                <svg class="w-4 h-4 text-[#1677FF] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="8" y="2" width="8" height="4" rx="1" />
+                  <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+                  <path d="M9 12h6M9 16h4" />
+                </svg>
+                <h2 class="text-[14px] font-semibold text-[#1E293B]">工单数据</h2>
+              </div>
+              <span class="text-[11px] font-medium text-[#1677FF] bg-[#F4F8FF] border border-[#DCE8FF] px-2 py-0.5 rounded-full tabular-nums shrink-0">
+                共 761 单，按时 100%
+              </span>
+            </div>
+
+            <div id="workorder-grid" class="grid grid-cols-2 gap-[10px]"></div>
+            <p class="drill-note">点击任一工单指标可查看对应工单明细 ›</p>
+          </article>
+        </section>
+
+        <!-- =============================================================== -->
+        <!-- 锚点区块 2：模块四 · 四维 Top 10 综合排行榜（合并降维 + Top5/10 展开） -->
+        <!-- =============================================================== -->
+        <section id="sec-ranking" class="scroll-mt-3">
+          <article class="m-card p-3.5">
+            <div class="flex items-center justify-between gap-2 pb-2.5 mb-3 border-b border-slate-100">
+              <div class="flex items-center gap-2 min-w-0">
+                <span class="w-[3px] h-3.5 rounded-full bg-[#1677FF] shrink-0"></span>
+                <svg id="rank-header-icon" class="w-4 h-4 text-[#1677FF] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+                </svg>
+                <h2 class="text-[14px] font-semibold text-[#1E293B]">维度排行统计</h2>
+              </div>
+              <span id="rank-badge-tag" class="text-[10.5px] font-medium text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full shrink-0">TOP 10</span>
+            </div>
+
+            <!-- 4 等分维度切换 Tab -->
+            <div id="rank-tabs" class="grid grid-cols-4 gap-1 p-1 rounded-xl bg-[#F2F5FA] border border-[#E5ECF5] mb-2.5" role="tablist" aria-label="排行榜维度切换"></div>
+
+            <!-- 当前维度汇总副标题条 -->
+            <div class="flex items-center justify-between gap-2 px-2.5 py-2 rounded-lg bg-[#F8FAFC] border border-[#EDF2F7] text-[11.5px] mb-2.5 tabular-nums">
+              <span id="rank-sub-label" class="text-slate-500">咨询话务汇总</span>
+              <span id="rank-sub-summary" class="font-semibold text-slate-700">3,286 次，占话务 69.2%</span>
+            </div>
+
+            <!-- 排行列表容器（默认 Top 5，可展开至 Top 10） -->
+            <div id="rank-list" class="space-y-2"></div>
+            <p id="rank-drill" class="drill-note">点击排行条目可查看对应通话或工单明细 ›</p>
+
+            <!-- 展开 / 收起触控按钮（>= 44px 触控热区） -->
+            <button type="button" id="rank-toggle-btn"
+              class="mt-3 w-full min-h-[44px] rounded-xl bg-[#F7F9FC] hover:bg-[#EFF5FF] active:scale-[0.98] border border-[#E6ECF5] text-[12.5px] font-semibold text-[#1677FF] flex items-center justify-center gap-1.5 transition-all cursor-pointer">
+              <span id="rank-toggle-text">展开查看全部 Top 10</span>
+              <svg id="rank-toggle-chevron" class="w-4 h-4 transition-transform duration-200" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
+            </button>
+          </article>
+        </section>
+
+        <!-- =============================================================== -->
+        <!-- 锚点区块 3：模块五 · 趋势洞察（单房日均送物趋势 + 投诉趋势） -->
+        <!-- =============================================================== -->
+        <section id="sec-trends" class="space-y-3 scroll-mt-3">
+
+          <!-- 趋势卡 1：单房日均送物趋势 -->
+          <article class="m-card p-3.5">
+            <div class="flex items-center justify-between gap-2 pb-2.5 mb-2.5 border-b border-slate-100">
+              <div class="flex items-center gap-1.5 min-w-0">
+                <span class="w-[3px] h-3.5 rounded-full bg-[#1677FF] shrink-0"></span>
+                <svg class="w-4 h-4 text-[#1677FF] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M3 3v18h18" />
+                  <path d="m19 9-5 5-4-4-3 3" />
+                </svg>
+                <div class="flex items-baseline gap-1 min-w-0">
+                  <h2 class="text-[14px] font-semibold text-[#1E293B] truncate">单房日均送物趋势</h2>
+                  <span class="text-[10.5px] text-slate-400 shrink-0">件/房·日</span>
+                </div>
+              </div>
+              <span class="text-[10.5px] font-semibold text-[#1677FF] bg-[#F4F8FF] border border-[#DCE8FF] px-2 py-0.5 rounded-full shrink-0 tabular-nums">
+                峰值 3.90 (10.31)
+              </span>
+            </div>
+
+            <!-- 5 系列单行横向可滑图例胶囊 -->
+            <div id="delivery-legend" class="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-2 mb-1"></div>
+
+            <!-- 图表上方固定「当前选中日期明细条」（防手指遮挡） -->
+            <div id="delivery-readout" class="bg-[#F6F9FF] border border-[#E3EEFF] rounded-xl px-3 py-2 mb-2 tabular-nums"></div>
+
+            <!-- 自适应平滑折线面积图容器（支持 Touch & Mouse） -->
+            <div id="delivery-chart-wrap" class="relative w-full h-[214px] select-none touch-pan-y cursor-crosshair">
+              <svg id="delivery-chart-svg" class="absolute inset-0 w-full h-full block"></svg>
+            </div>
+          </article>
+
+          <!-- 趋势卡 2：投诉趋势 -->
+          <article class="m-card p-3.5">
+            <div class="flex items-center justify-between gap-2 pb-2.5 mb-2.5 border-b border-slate-100">
+              <div class="flex items-center gap-1.5 min-w-0">
+                <span class="w-[3px] h-3.5 rounded-full bg-[#1677FF] shrink-0"></span>
+                <svg class="w-4 h-4 text-[#F25C5C] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+                </svg>
+                <div class="flex items-baseline gap-1 min-w-0">
+                  <h2 class="text-[14px] font-semibold text-[#1E293B] truncate">投诉趋势</h2>
+                  <span class="text-[10.5px] text-slate-400 shrink-0">件/日</span>
+                </div>
+              </div>
+              <span class="text-[10.5px] text-slate-500 bg-[#F7F9FC] border border-[#E8EEF5] px-2 py-0.5 rounded-full shrink-0 tabular-nums">
+                合计 51 件，均 1.7 件/日
+              </span>
+            </div>
+
+            <!-- 图例切换条 + 操作提示 -->
+            <div class="flex items-center justify-between gap-2 mb-2">
+              <div id="complaint-legend" class="flex items-center gap-1.5"></div>
+              <span class="text-[10.5px] text-slate-400 shrink-0">滑动图表查看每日</span>
+            </div>
+
+            <!-- 图表上方固定「当前选中日期明细条」 -->
+            <div id="complaint-readout" class="bg-[#FFF8F8] border border-[#FCE5E5] rounded-xl px-3 py-2 mb-2 tabular-nums"></div>
+
+            <!-- 自适应平滑折线面积图容器 -->
+            <div id="complaint-chart-wrap" class="relative w-full h-[214px] select-none touch-pan-y cursor-crosshair">
+              <svg id="complaint-chart-svg" class="absolute inset-0 w-full h-full block"></svg>
+            </div>
+          </article>
+        </section>
+
+        <!-- =============================================================== -->
+        <!-- 锚点区块 4：模块六 · 工单状态 / 预警信息 -->
+        <!-- =============================================================== -->
+        <section id="sec-feed" class="scroll-mt-3">
+          <article class="m-card p-3.5">
+            <!-- 顶部双 Tab 栏 + 更新时间 -->
+            <div class="flex items-center justify-between gap-2 border-b border-slate-100 mb-3">
+              <div class="flex items-center gap-5" role="tablist">
+                <button type="button" id="tab-order-btn" role="tab" aria-selected="true"
+                  class="min-h-[40px] pb-2.5 -mb-px inline-flex items-center gap-1.5 text-[14px] font-semibold text-[#1677FF] border-b-2 border-[#1677FF] active:opacity-80 transition-colors cursor-pointer">
+                  <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                    <polyline points="14 2 14 8 20 8" />
+                    <path d="m9 15 2 2 4-4" />
+                  </svg>
+                  <span>工单状态</span>
+                </button>
+                <button type="button" id="tab-alert-btn" role="tab" aria-selected="false"
+                  class="min-h-[40px] pb-2.5 -mb-px inline-flex items-center gap-1.5 text-[14px] font-medium text-slate-500 border-b-2 border-transparent active:opacity-80 transition-colors cursor-pointer">
+                  <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                    <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+                  </svg>
+                  <span>预警信息</span>
+                </button>
+              </div>
+              <div class="inline-flex items-center gap-1 text-[11px] text-slate-400 tabular-nums shrink-0 pb-2">
+                <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="9" />
+                  <path d="M12 7v5l3 2" />
+                </svg>
+                <span>更新 21:55</span>
+              </div>
+            </div>
+
+            <!-- Tab 1：工单状态时间轴 -->
+            <div id="panel-order">
+              <div class="flex items-center justify-between text-[12px] mb-2.5">
+                <span class="font-medium text-slate-600">工单动态</span>
+                <span class="text-[11px] text-slate-400 bg-slate-50 border border-slate-100 px-2 py-0.5 rounded-full tabular-nums">最近 4 条</span>
+              </div>
+              <div id="order-timeline" class="relative space-y-2.5 pl-3.5"></div>
+            </div>
+
+            <!-- Tab 2：预警信息时间轴（与工单状态展示样式一致） -->
+            <div id="panel-alert" class="hidden">
+              <div class="flex items-center justify-between text-[12px] mb-2.5">
+                <span class="font-medium text-slate-600">预警动态</span>
+                <span class="text-[11px] text-slate-400 bg-slate-50 border border-slate-100 px-2 py-0.5 rounded-full tabular-nums">最近 3 条</span>
+              </div>
+              <div id="alert-timeline" class="relative space-y-2.5 pl-3.5"></div>
+            </div>
+          </article>
+        </section>
+
+        <!-- ==================== 页尾低调数据快照说明 ==================== -->
+        <footer class="pt-2 pb-1 text-center text-[11px] text-slate-400 tabular-nums">
+          云居客需服务中心 · 数据快照 2026-11-05 21:55
+        </footer>
+
+      </div>
+    </main>
+
+    </div><!-- /#view-overview -->
+
+    <!-- =============================================================== -->
+    <!-- 视图 2：通话记录（话务总数 / 内外线 / 来电分布 / 排行下钻） -->
+    <!-- =============================================================== -->
+    <section id="view-call" class="view" data-state="off" aria-hidden="true">
+      <header class="page-head">
+        <button type="button" class="back-btn" data-back aria-label="返回">
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6" /></svg>
+        </button>
+        <div class="min-w-0 flex-1">
+          <h2 class="page-title">通话记录</h2>
+          <p class="page-sub" id="call-sub">近30天 · 共 4,754 通</p>
+        </div>
+        <span class="head-tag" id="call-count">4,754 条</span>
+      </header>
+
+      <div class="px-3 pt-2 pb-2 bg-white border-b border-[#E9EFF7]">
+        <div id="call-tabs" class="seg" role="tablist" aria-label="线路类型"></div>
+      </div>
+
+      <div class="filter-wrap">
+        <div class="filter-row">
+          <span class="filter-label">内容分类</span>
+          <div id="call-cat-chips" class="chips"></div>
+        </div>
+        <div class="filter-row">
+          <span class="filter-label">内容概要</span>
+          <div id="call-sum-chips" class="chips"></div>
+        </div>
+        <div class="filter-row">
+          <div class="search-box">
+            <svg class="w-3.5 h-3.5 text-slate-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7" /><path d="m20.5 20.5-4.3-4.3" /></svg>
+            <input id="call-room" type="search" inputmode="numeric" autocomplete="off" placeholder="搜索房间号，如 1715" />
+          </div>
+          <button type="button" class="date-pill" id="call-date-btn">
+            <svg class="w-3.5 h-3.5 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></svg>
+            <span id="call-date-text">10-07 ~ 11-05</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="page-scroll" id="call-scroll">
+        <div id="call-active"></div>
+        <div id="call-list" class="rec-list"></div>
+        <div id="call-foot" class="load-tip"></div>
+      </div>
+    </section>
+
+    <!-- =============================================================== -->
+    <!-- 视图 3：通话详情 -->
+    <!-- =============================================================== -->
+    <section id="view-call-detail" class="view" data-state="off" aria-hidden="true">
+      <header class="page-head">
+        <button type="button" class="back-btn" data-back aria-label="返回">
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6" /></svg>
+        </button>
+        <div class="min-w-0 flex-1">
+          <h2 class="page-title">通话详情</h2>
+          <p class="page-sub" id="call-detail-sub">通话记录明细</p>
+        </div>
+        <span class="head-tag" id="call-detail-tag">—</span>
+      </header>
+      <div class="page-scroll" id="call-detail-body"></div>
+    </section>
+
+    <!-- =============================================================== -->
+    <!-- 视图 4：AI 处理率（每日统计） -->
+    <!-- =============================================================== -->
+    <section id="view-ai" class="view" data-state="off" aria-hidden="true">
+      <header class="page-head">
+        <button type="button" class="back-btn" data-back aria-label="返回">
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6" /></svg>
+        </button>
+        <div class="min-w-0 flex-1">
+          <h2 class="page-title">AI 处理率</h2>
+          <p class="page-sub" id="ai-sub">每日处理率统计</p>
+        </div>
+        <span class="head-tag" id="ai-count">30 天</span>
+      </header>
+
+      <div class="filter-wrap">
+        <div class="filter-row">
+          <span class="filter-label">统计日期</span>
+          <div id="ai-range-chips" class="chips"></div>
+        </div>
+      </div>
+
+      <div class="page-scroll" id="ai-scroll">
+        <div id="ai-summary"></div>
+        <div id="ai-list" class="rec-list"></div>
+        <div id="ai-foot" class="load-tip"></div>
+      </div>
+    </section>
+
+    <!-- =============================================================== -->
+    <!-- 视图 5：工单列表 -->
+    <!-- =============================================================== -->
+    <section id="view-order" class="view" data-state="off" aria-hidden="true">
+      <header class="page-head">
+        <button type="button" class="back-btn" data-back aria-label="返回">
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6" /></svg>
+        </button>
+        <div class="min-w-0 flex-1">
+          <h2 class="page-title">工单列表</h2>
+          <p class="page-sub" id="order-sub">近30天 · 共 761 单</p>
+        </div>
+        <span class="head-tag" id="order-count">761 单</span>
+      </header>
+
+      <div class="filter-wrap">
+        <div class="filter-row">
+          <span class="filter-label">工单类型</span>
+          <div id="order-type-chips" class="chips"></div>
+        </div>
+        <div class="filter-row">
+          <button type="button" class="date-pill" id="order-date-btn" style="flex:1 1 auto;justify-content:center;">
+            <svg class="w-3.5 h-3.5 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></svg>
+            <span id="order-date-text">10-07 ~ 11-05</span>
+          </button>
+          <button type="button" class="date-pill" id="order-filter-btn">
+            <svg class="w-3.5 h-3.5 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M7 12h10M10 18h4" /></svg>
+            <span>筛选</span>
+            <em id="order-filter-badge" style="font-style:normal;font-size:10px;font-weight:700;color:#fff;background:#1677FF;border-radius:999px;min-width:15px;height:15px;display:none;place-items:center;padding:0 4px;">0</em>
+          </button>
+        </div>
+      </div>
+
+      <div class="page-scroll" id="order-scroll">
+        <div id="order-active"></div>
+        <div id="order-list" class="rec-list"></div>
+        <div id="order-foot" class="load-tip"></div>
+      </div>
+    </section>
+
+    <!-- =============================================================== -->
+    <!-- 视图 6：工单详情 -->
+    <!-- =============================================================== -->
+    <section id="view-order-detail" class="view" data-state="off" aria-hidden="true">
+      <header class="page-head">
+        <button type="button" class="back-btn" data-back aria-label="返回">
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6" /></svg>
+        </button>
+        <div class="min-w-0 flex-1">
+          <h2 class="page-title">工单详情</h2>
+          <p class="page-sub" id="order-detail-sub">工单内容与处理记录</p>
+        </div>
+        <span class="head-tag" id="order-detail-tag">—</span>
+      </header>
+      <div class="page-scroll" id="order-detail-body"></div>
+    </section>
+
+    <!-- =============================================================== -->
+    <!-- 通用底部弹层（日期时段 / 工单筛选） -->
+    <!-- =============================================================== -->
+    <div id="sheet-mask" class="sheet-mask"></div>
+    <div id="sheet-panel" class="sheet-panel" role="dialog" aria-modal="true" aria-label="筛选">
+      <div class="sheet-head">
+        <strong id="sheet-title">筛选</strong>
+        <button type="button" class="sheet-x" id="sheet-close" aria-label="关闭">✕</button>
+      </div>
+      <div class="sheet-body" id="sheet-body"></div>
+      <div class="sheet-foot">
+        <button type="button" class="btn-ghost" id="sheet-reset">重置</button>
+        <button type="button" class="btn-primary" id="sheet-ok">确定</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== 核心数据与移动端交互逻辑 ==================== -->
+  <script>
+    (function () {
+      'use strict';
+
+      try {
+        /* -------------------------------------------------------------------
+         * 1. 100% 原始业务数据集（零编造、零删减）
+         * ------------------------------------------------------------------- */
+
+        // 1.1 来电分布 6 类数据
+        const callDistributionData = [
+          {
+            name: '送物类', count: 1965, countStr: '1,965', pct: 45.41, pctStr: '45.41%', delta: '-12.04%', trend: 'down', color: '#1677FF',
+            icon: '<path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/>'
+          },
+          {
+            name: '咨询类', count: 1130, countStr: '1,130', pct: 26.12, pctStr: '26.12%', delta: '-21.25%', trend: 'down', color: '#13C2C2',
+            icon: '<path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>'
+          },
+          {
+            name: '预定类', count: 839, countStr: '839', pct: 19.39, pctStr: '19.39%', delta: '-12.47%', trend: 'down', color: '#FAAD14',
+            icon: '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>'
+          },
+          {
+            name: '其他类', count: 340, countStr: '340', pct: 7.86, pctStr: '7.86%', delta: '-25.44%', trend: 'down', color: '#7C5CFF',
+            icon: '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/>'
+          },
+          {
+            name: '投诉类', count: 51, countStr: '51', pct: 1.18, pctStr: '1.18%', delta: '-32.00%', trend: 'down', color: '#F25C5C',
+            icon: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M12 8v4"/><path d="M12 16h.01"/>'
+          },
+          {
+            name: '建议类', count: 2, countStr: '2', pct: 0.05, pctStr: '0.05%', delta: '+0%', trend: 'flat', color: '#94A3B8',
+            icon: '<path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/>'
+          }
+        ];
+
+        // 1.2 工单数据 6 项指标（2 列 × 3 行）
+        const workOrderMetrics = [
+          {
+            label: '工单总数',
+            value: '761',
+            subHtml: '<span class="text-[#F25C5C] font-semibold">↓ -13.72%</span> <span class="text-slate-400">环比上期</span>',
+            iconBg: 'bg-[#1677FF]',
+            shadow: 'shadow-[0_2px_6px_rgba(22,119,255,0.26)]',
+            cardBg: 'bg-[#F5F8FF] border-[#E6EEFF]',
+            icon: '<path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/>'
+          },
+          {
+            label: '按时完成',
+            value: '761',
+            subHtml: '<span class="text-[#10B981] font-semibold">100%</span> <span class="text-slate-400">按时完成率</span>',
+            iconBg: 'bg-[#FA9D26]',
+            shadow: 'shadow-[0_2px_6px_rgba(250,157,38,0.26)]',
+            cardBg: 'bg-[#FFFBF2] border-[#FDEFD4]',
+            icon: '<circle cx="12" cy="12" r="9"/><path d="m9 12 2 2 4-4"/>'
+          },
+          {
+            label: '超时工单',
+            value: '0',
+            subHtml: '<span class="text-slate-400">本期无超时</span>',
+            iconBg: 'bg-[#F25C5C]',
+            shadow: 'shadow-[0_2px_6px_rgba(242,92,92,0.24)]',
+            cardBg: 'bg-[#FFF7F7] border-[#FDE4E4]',
+            icon: '<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 1.5"/><path d="M5 3 2 6M22 6l-3-3"/>'
+          },
+          {
+            label: '送物工单',
+            value: '638',
+            subHtml: '<span class="text-[#F25C5C] font-semibold">↓ -12.48%</span> <span class="text-slate-400">环比上期</span>',
+            iconBg: 'bg-[#1677FF]',
+            shadow: 'shadow-[0_2px_6px_rgba(22,119,255,0.26)]',
+            cardBg: 'bg-[#F5F8FF] border-[#E6EEFF]',
+            icon: '<path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/>'
+          },
+          {
+            label: '维修工单',
+            value: '52',
+            subHtml: '<span class="text-[#F25C5C] font-semibold">↓ -20.00%</span> <span class="text-slate-400">环比上期</span>',
+            iconBg: 'bg-[#FA9D26]',
+            shadow: 'shadow-[0_2px_6px_rgba(250,157,38,0.26)]',
+            cardBg: 'bg-[#FFFBF2] border-[#FDEFD4]',
+            icon: '<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>'
+          },
+          {
+            label: '一键吐槽',
+            value: '0',
+            subHtml: '<span class="text-slate-400">本期无吐槽</span>',
+            iconBg: 'bg-[#F25C5C]',
+            shadow: 'shadow-[0_2px_6px_rgba(242,92,92,0.24)]',
+            cardBg: 'bg-[#FFF7F7] border-[#FDE4E4]',
+            icon: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M12 8v3"/><path d="M12 14h.01"/>'
+          }
+        ];
+
+        // 1.3 四维 Top 10 排行榜配置（合并为单张综合卡片）
+        const rankingDimensions = [
+          {
+            key: 'consult',
+            tabLabel: '客户咨询',
+            tag: 'TOP 10',
+            subLabel: '咨询话务汇总',
+            subSummary: '3,286 次，占话务 69.2%',
+            color: '#1677FF',
+            gradient: 'from-[#69B1FF] to-[#1677FF]',
+            topBadge: ['bg-[#1677FF] text-white', 'bg-[#E6F4FF] text-[#1677FF]', 'bg-[#F0F7FF] text-[#1677FF]'],
+            icon: '<path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>',
+            data: [
+              { rank: '01', name: '客房送餐', value: 952, pct: '29.0%' },
+              { rank: '02', name: '预定房间', value: 839, pct: '25.5%' },
+              { rank: '03', name: '送物服务', value: 651, pct: '19.8%' },
+              { rank: '04', name: '未归类', value: 340, pct: '10.3%' },
+              { rank: '05', name: '入住 / 退房', value: 141, pct: '4.3%' },
+              { rank: '06', name: '故障报修', value: 131, pct: '4.0%' },
+              { rank: '07', name: '餐厅咨询', value: 107, pct: '3.3%' },
+              { rank: '08', name: '客房服务', value: 64, pct: '1.9%' },
+              { rank: '09', name: '客房内设备操作', value: 37, pct: '1.1%' },
+              { rank: '10', name: '费用账单咨询', value: 26, pct: '0.8%' }
+            ]
+          },
+          {
+            key: 'delivery',
+            tabLabel: '客需送物',
+            tag: '按送物品类',
+            subLabel: '客需配送总量',
+            subSummary: '1,018 件，1.59 件/单',
+            color: '#FA8C16',
+            gradient: 'from-[#FFC069] to-[#FA8C16]',
+            topBadge: ['bg-[#FA8C16] text-white', 'bg-[#FFF7E6] text-[#FA8C16]', 'bg-[#FFFBE6] text-[#D48806]'],
+            icon: '<rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13"/><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5A4.8 8 0 0 1 12 8a4.8 8 0 0 1 4.5-5 2.5 2.5 0 0 1 0 5"/>',
+            data: [
+              { rank: '01', name: '矿泉水', value: 729, pct: '71.6%' },
+              { rank: '02', name: '茶具', value: 69, pct: '6.8%' },
+              { rank: '03', name: '剃须刀', value: 53, pct: '5.2%' },
+              { rank: '04', name: '一次性拖鞋', value: 47, pct: '4.6%' },
+              { rank: '05', name: '一次性牙刷', value: 27, pct: '2.7%' },
+              { rank: '06', name: '塑料袋子', value: 23, pct: '2.3%' },
+              { rank: '07', name: '一次性剃须刀', value: 23, pct: '2.3%' },
+              { rank: '08', name: '毛巾', value: 18, pct: '1.8%' },
+              { rank: '09', name: '牙膏', value: 15, pct: '1.5%' },
+              { rank: '10', name: '浴帽', value: 12, pct: '1.2%' }
+            ]
+          },
+          {
+            key: 'repair',
+            tabLabel: '维修类型',
+            tag: '按报修部位',
+            subLabel: '工程维修汇总',
+            subSummary: '52 单，占工单 6.8%',
+            color: '#13C2C2',
+            gradient: 'from-[#5CDBD3] to-[#13C2C2]',
+            topBadge: ['bg-[#13C2C2] text-white', 'bg-[#E6FFFB] text-[#08979C]', 'bg-[#F0FDFA] text-[#13C2C2]'],
+            icon: '<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>',
+            data: [
+              { rank: '01', name: '空调', value: 10, pct: '19.2%' },
+              { rank: '02', name: '卫浴洁具', value: 8, pct: '15.4%' },
+              { rank: '03', name: '门锁', value: 7, pct: '13.5%' },
+              { rank: '04', name: '电视', value: 6, pct: '11.5%' },
+              { rank: '05', name: '灯具照明', value: 5, pct: '9.6%' },
+              { rank: '06', name: '网络', value: 5, pct: '9.6%' },
+              { rank: '07', name: '热水器', value: 4, pct: '7.7%' },
+              { rank: '08', name: '插座电路', value: 3, pct: '5.8%' },
+              { rank: '09', name: '家具', value: 2, pct: '3.8%' },
+              { rank: '10', name: '窗帘', value: 2, pct: '3.8%' }
+            ]
+          },
+          {
+            key: 'complaint',
+            tabLabel: '投诉类型',
+            tag: '按投诉归因',
+            subLabel: '客诉归因汇总',
+            subSummary: '51 件，均 1.7 件/日',
+            color: '#F25C5C',
+            gradient: 'from-[#FF9C9C] to-[#F25C5C]',
+            topBadge: ['bg-[#F25C5C] text-white', 'bg-[#FFF1F0] text-[#F25C5C]', 'bg-[#FFF5F5] text-[#EF4444]'],
+            icon: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M12 8v4"/><path d="M12 16h.01"/>',
+            data: [
+              { rank: '01', name: '费用账单类', value: 9, pct: '17.6%' },
+              { rank: '02', name: '安保安全类', value: 8, pct: '15.7%' },
+              { rank: '03', name: '客房环境类', value: 7, pct: '13.7%' },
+              { rank: '04', name: '服务态度类', value: 6, pct: '11.8%' },
+              { rank: '05', name: '噪音干扰类', value: 5, pct: '9.8%' },
+              { rank: '06', name: '设施设备类', value: 4, pct: '7.8%' },
+              { rank: '07', name: '卫生清洁类', value: 4, pct: '7.8%' },
+              { rank: '08', name: '网络通信类', value: 3, pct: '5.9%' },
+              { rank: '09', name: '餐饮服务类', value: 3, pct: '5.9%' },
+              { rank: '10', name: '其他类', value: 2, pct: '3.9%' }
+            ]
+          }
+        ];
+
+        // 1.4 30 天日期序列（10.07 ~ 11.05）与移动端 5 刻度精简索引
+        const dates30 = [
+          '10.07', '10.08', '10.09', '10.10', '10.11',
+          '10.12', '10.13', '10.14', '10.15', '10.16',
+          '10.17', '10.18', '10.19', '10.20', '10.21',
+          '10.22', '10.23', '10.24', '10.25', '10.26',
+          '10.27', '10.28', '10.29', '10.30', '10.31',
+          '11.01', '11.02', '11.03', '11.04', '11.05'
+        ];
+        const mobileXTickIndices = [0, 7, 14, 21, 29]; // 10.07, 10.14, 10.21, 10.28, 11.05
+
+        // 1.5 单房日均送物趋势（10.31 峰值 3.90）
+        const deliverySeries = [
+          {
+            key: 'total',
+            label: '综合',
+            color: '#1677FF',
+            active: true,
+            values: [
+              2.44, 2.58, 2.71, 2.62, 2.48,
+              2.39, 2.52, 2.66, 2.72, 2.55,
+              2.45, 2.56, 2.69, 2.76, 2.64,
+              2.49, 2.42, 2.59, 2.75, 2.94,
+              3.24, 3.36, 3.45, 3.64, 3.90,
+              3.72, 3.48, 3.16, 2.88, 2.58
+            ]
+          },
+          {
+            key: 'water',
+            label: '矿泉水',
+            color: '#13C2C2',
+            active: true,
+            values: [
+              1.18, 1.24, 1.32, 1.26, 1.19,
+              1.14, 1.21, 1.28, 1.33, 1.24,
+              1.18, 1.22, 1.30, 1.36, 1.29,
+              1.20, 1.16, 1.25, 1.34, 1.42,
+              1.50, 1.54, 1.49, 1.56, 1.64,
+              1.57, 1.51, 1.41, 1.32, 1.45
+            ]
+          },
+          {
+            key: 'tea',
+            label: '茶具',
+            color: '#FAAD14',
+            active: false,
+            values: [
+              0.22, 0.24, 0.26, 0.25, 0.23,
+              0.21, 0.23, 0.26, 0.27, 0.24,
+              0.23, 0.25, 0.27, 0.28, 0.26,
+              0.24, 0.23, 0.26, 0.29, 0.31,
+              0.34, 0.35, 0.36, 0.38, 0.42,
+              0.39, 0.36, 0.32, 0.29, 0.26
+            ]
+          },
+          {
+            key: 'razor',
+            label: '剃须刀',
+            color: '#7C5CFF',
+            active: false,
+            values: [
+              0.18, 0.19, 0.21, 0.19, 0.18,
+              0.17, 0.19, 0.20, 0.21, 0.19,
+              0.18, 0.19, 0.21, 0.22, 0.20,
+              0.19, 0.18, 0.20, 0.22, 0.24,
+              0.26, 0.27, 0.28, 0.30, 0.33,
+              0.31, 0.28, 0.25, 0.22, 0.20
+            ]
+          },
+          {
+            key: 'slippers',
+            label: '一次性拖鞋',
+            color: '#38BDF8',
+            active: false,
+            values: [
+              0.15, 0.16, 0.18, 0.17, 0.16,
+              0.15, 0.16, 0.18, 0.19, 0.17,
+              0.16, 0.17, 0.18, 0.19, 0.18,
+              0.16, 0.16, 0.18, 0.20, 0.21,
+              0.24, 0.25, 0.26, 0.28, 0.30,
+              0.28, 0.26, 0.23, 0.20, 0.18
+            ]
+          }
+        ];
+
+        // 1.6 投诉趋势（合计 51 件，均值 1.7 件/日，5 次触及 3 件/日波峰）
+        const complaintDaily = [
+          2, 2, 1, 3, 2,
+          1, 1, 2, 3, 2,
+          1, 2, 1, 1, 2,
+          1, 3, 2, 1, 2,
+          1, 1, 3, 2, 1,
+          2, 3, 1, 1, 1
+        ];
+        const complaintMA7 = complaintDaily.map((_, idx) => {
+          const start = Math.max(0, idx - 6);
+          const slice = complaintDaily.slice(start, idx + 1);
+          const avg = slice.reduce((acc, v) => acc + v, 0) / slice.length;
+          return Number(avg.toFixed(2));
+        });
+        const complaintSeriesState = {
+          daily: true,
+          ma7: true
+        };
+
+        // 1.7 工单动态最近 4 条
+        const orderFeedData = [
+          {
+            title: '客房 70827 · 送物服务 任务分配成功',
+            status: '已完成',
+            source: '任务负责人',
+            time: '2026-11-05 21:55',
+            type: 'delivery',
+            dotColor: '#1677FF'
+          },
+          {
+            title: '客房 5321 · 送物服务 任务完成',
+            status: '已完成',
+            source: '任务负责人',
+            time: '2026-11-05 21:54',
+            type: 'delivery',
+            dotColor: '#13C2C2'
+          },
+          {
+            title: '客房 9623 · 送物服务 任务完成',
+            status: '已完成',
+            source: '任务负责人',
+            time: '2026-11-05 21:51',
+            type: 'delivery',
+            dotColor: '#10B981'
+          },
+          {
+            title: '客房 2210 · 维修服务（空调）派单至工程部',
+            status: '已完成',
+            source: '工程部',
+            time: '2026-11-05 20:48',
+            type: 'repair',
+            dotColor: '#FA9D26'
+          }
+        ];
+
+        // 1.8 预警信息动态（超时预警 / 投诉预警 / 差评预警，展示结构与工单状态一致）
+        const alertFeedData = [
+          {
+            title: '客房 8206 · 送物服务 任务处理超时预警',
+            status: '超时预警',
+            source: '任务负责人',
+            time: '2026-11-05 21:46',
+            type: 'timeout',
+            dotColor: '#FA9D26',
+            badgeClass: 'bg-[#FFF7E6] text-[#FA8C16] border-[#FFE7BA]'
+          },
+          {
+            title: '客房 6312 · 费用账单类 客户投诉预警',
+            status: '投诉预警',
+            source: '任务负责人',
+            time: '2026-11-05 21:28',
+            type: 'complaint',
+            dotColor: '#F25C5C',
+            badgeClass: 'bg-[#FFF1F0] text-[#F25C5C] border-[#FFCCC7]'
+          },
+          {
+            title: '客房 5109 · 客房环境类 服务差评预警',
+            status: '差评预警',
+            source: '任务负责人',
+            time: '2026-11-05 20:56',
+            type: 'bad_review',
+            dotColor: '#7C5CFF',
+            badgeClass: 'bg-[#F7F5FF] text-[#7C5CFF] border-[#DDD6FE]'
+          }
+        ];
+
+        /* -------------------------------------------------------------------
+         * 2. Toast 轻提示（严格居中在手机容器内）
+         * ------------------------------------------------------------------- */
+        let toastTimer = null;
+        function showToast(message) {
+          const box = document.getElementById('toast-box');
+          const text = document.getElementById('toast-text');
+          if (!box || !text) return;
+
+          text.textContent = message;
+          box.classList.remove('toast-hidden');
+          box.classList.add('toast-visible');
+
+          if (toastTimer) clearTimeout(toastTimer);
+          toastTimer = setTimeout(() => {
+            box.classList.remove('toast-visible');
+            box.classList.add('toast-hidden');
+          }, 2600);
+        }
+
+        /* -------------------------------------------------------------------
+         * 3. 顶部周期分段器（仅展示真实近30天快照，不编造数据）
+         * ------------------------------------------------------------------- */
+        function initPeriodControl() {
+          const container = document.getElementById('period-control');
+          if (!container) return;
+
+          const buttons = container.querySelectorAll('.period-btn');
+          const periodLabels = { yesterday: '昨日', '7d': '近7天', '30d': '近30天' };
+
+          function setActive(period) {
+            buttons.forEach((btn) => {
+              const selected = btn.getAttribute('data-period') === period;
+              btn.setAttribute('aria-selected', String(selected));
+              btn.classList.toggle('bg-[#1677FF]', selected);
+              btn.classList.toggle('text-white', selected);
+              btn.classList.toggle('font-semibold', selected);
+              btn.classList.toggle('shadow-[0_2px_6px_rgba(22,119,255,0.28)]', selected);
+              btn.classList.toggle('text-slate-600', !selected);
+              btn.classList.toggle('font-medium', !selected);
+            });
+          }
+
+          buttons.forEach((btn) => {
+            btn.addEventListener('click', () => {
+              const period = btn.getAttribute('data-period');
+              setActive(period);
+              if (period === '30d') {
+                showToast('已切换回「近30天」运营数据快照（2026-11-05 21:55）');
+              } else {
+                showToast(`当前快照仅包含「近30天」真实数据，暂未接入「${periodLabels[period] || period}」周期明细`);
+              }
+            });
+          });
+        }
+
+        /* -------------------------------------------------------------------
+         * 4. 快捷锚点平滑滚动与滚动同步高亮
+         * ------------------------------------------------------------------- */
+        function initAnchorNav() {
+          const nav = document.getElementById('anchor-nav');
+          const scroller = document.getElementById('scroll-container');
+          if (!nav || !scroller) return;
+
+          const buttons = Array.from(nav.querySelectorAll('.anchor-btn'));
+          const sectionIds = buttons.map((b) => b.getAttribute('data-target'));
+
+          function setActiveAnchor(targetId) {
+            buttons.forEach((btn) => {
+              const isActive = btn.getAttribute('data-target') === targetId;
+              btn.classList.toggle('bg-[#F0F7FF]', isActive);
+              btn.classList.toggle('text-[#1677FF]', isActive);
+              btn.classList.toggle('border-[#CBE0FF]', isActive);
+              btn.classList.toggle('font-semibold', isActive);
+              btn.classList.toggle('bg-[#F8FAFC]', !isActive);
+              btn.classList.toggle('text-slate-500', !isActive);
+              btn.classList.toggle('border-slate-200/70', !isActive);
+              btn.classList.toggle('font-medium', !isActive);
+            });
+          }
+
+          buttons.forEach((btn) => {
+            btn.addEventListener('click', () => {
+              const targetId = btn.getAttribute('data-target');
+              const targetEl = document.getElementById(targetId);
+              if (!targetEl) return;
+              setActiveAnchor(targetId);
+              const top = targetEl.offsetTop - 12;
+              scroller.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+            });
+          });
+
+          let rafTick = false;
+          scroller.addEventListener('scroll', () => {
+            if (rafTick) return;
+            rafTick = true;
+            requestAnimationFrame(() => {
+              rafTick = false;
+              const scrollPos = scroller.scrollTop + 48;
+              let currentId = sectionIds[0];
+              for (const id of sectionIds) {
+                const el = document.getElementById(id);
+                if (el && el.offsetTop <= scrollPos) {
+                  currentId = id;
+                }
+              }
+              // 触底时高亮最后一块
+              if (scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 16) {
+                currentId = sectionIds[sectionIds.length - 1];
+              }
+              setActiveAnchor(currentId);
+            });
+          }, { passive: true });
+        }
+
+        /* -------------------------------------------------------------------
+         * 5. 模块一：内外线点击选中高亮（再次点击取消）
+         * ------------------------------------------------------------------- */
+        function initLineTapHighlight() {
+          const triggers = document.querySelectorAll('.line-trigger');
+          const barOutbound = document.getElementById('bar-outbound');
+          const barInbound = document.getElementById('bar-inbound');
+          const rowOutbound = document.getElementById('row-outbound');
+          const rowInbound = document.getElementById('row-inbound');
+          const hintEl = document.getElementById('line-hint');
+          if (!triggers.length || !barOutbound || !barInbound || !rowOutbound || !rowInbound) return;
+
+          let selectedLine = null;
+
+          function applyLineHighlight() {
+            const isOut = selectedLine === 'outbound';
+            const isIn = selectedLine === 'inbound';
+
+            barOutbound.style.opacity = isIn ? '0.28' : '1';
+            barInbound.style.opacity = isOut ? '0.28' : '1';
+
+            rowOutbound.setAttribute('aria-pressed', String(isOut));
+            rowInbound.setAttribute('aria-pressed', String(isIn));
+
+            rowOutbound.classList.toggle('ring-2', isOut);
+            rowOutbound.classList.toggle('ring-[#1677FF]/35', isOut);
+            rowOutbound.classList.toggle('border-[#1677FF]/60', isOut);
+            rowOutbound.classList.toggle('bg-[#F5F9FF]', isOut);
+            rowOutbound.classList.toggle('opacity-60', isIn);
+
+            rowInbound.classList.toggle('ring-2', isIn);
+            rowInbound.classList.toggle('ring-[#13C2C2]/35', isIn);
+            rowInbound.classList.toggle('border-[#13C2C2]/60', isIn);
+            rowInbound.classList.toggle('bg-[#F2FFFD]', isIn);
+            rowInbound.classList.toggle('opacity-60', isOut);
+
+            if (hintEl) {
+              hintEl.textContent = isOut
+                ? '已选中外线 · 再次点击取消'
+                : isIn
+                  ? '已选中内线 · 再次点击取消'
+                  : '点击卡片查看通话明细';
+            }
+          }
+
+          triggers.forEach((el) => {
+            el.addEventListener('click', () => {
+              const target = el.getAttribute('data-line');
+              selectedLine = selectedLine === target ? null : target;
+              applyLineHighlight();
+            });
+          });
+        }
+
+        /* -------------------------------------------------------------------
+         * 6. 模块二：来电分布 6 类紧凑双行列表渲染
+         * ------------------------------------------------------------------- */
+        function renderCallDistribution() {
+          const listEl = document.getElementById('call-distribution-list');
+          if (!listEl) return;
+
+          const maxPct = Math.max(...callDistributionData.map((d) => d.pct));
+
+          listEl.innerHTML = callDistributionData.map((item, index) => {
+            const barWidth = Math.max(2.5, (item.pct / maxPct) * 100);
+            const deltaClass = item.trend === 'down'
+              ? 'text-[#F25C5C] bg-[#FFF1F0]'
+              : item.trend === 'up'
+                ? 'text-[#10B981] bg-[#ECFDF5]'
+                : 'text-slate-500 bg-slate-100';
+            const arrow = item.trend === 'down' ? '↓' : item.trend === 'up' ? '↑' : '';
+
+            return `
+              <div class="space-y-1.5 py-0.5 is-drill" data-dist-index="${index}">
+                <!-- 上行：左图标分类，右通数 + 占比 + 环比胶囊（375px 零折行） -->
+                <div class="flex items-center justify-between gap-2">
+                  <div class="flex items-center gap-2 min-w-0">
+                    <span class="w-[22px] h-[22px] rounded-md flex items-center justify-center shrink-0" style="background-color: ${item.color}18; color: ${item.color};">
+                      <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        ${item.icon}
+                      </svg>
+                    </span>
+                    <span class="text-[13px] font-medium text-slate-700 whitespace-nowrap">${item.name}</span>
+                  </div>
+                  <div class="flex items-center gap-1.5 shrink-0 tabular-nums">
+                    <span class="text-[13px] font-bold text-slate-900 whitespace-nowrap">${item.countStr}</span>
+                    <span class="text-[11.5px] text-slate-400 w-[44px] text-right whitespace-nowrap">${item.pctStr}</span>
+                    <span class="inline-flex items-center justify-center min-w-[58px] text-[10.5px] font-semibold px-1.5 py-0.5 rounded whitespace-nowrap ${deltaClass}">${arrow}${arrow ? ' ' : ''}${item.delta}</span>
+                  </div>
+                </div>
+                <!-- 下行：通栏 5px 细圆角进度条 -->
+                <div class="w-full h-[5px] rounded-full bg-[#EEF2F7] overflow-hidden">
+                  <div class="h-full rounded-full transition-all duration-500" style="width: ${barWidth.toFixed(1)}%; background-color: ${item.color};"></div>
+                </div>
+              </div>
+            `;
+          }).join('');
+        }
+
+        /* -------------------------------------------------------------------
+         * 7. 模块三：工单数据 2 列 × 3 行卡片矩阵渲染
+         * ------------------------------------------------------------------- */
+        function renderWorkOrders() {
+          const grid = document.getElementById('workorder-grid');
+          if (!grid) return;
+
+          grid.innerHTML = workOrderMetrics.map((m, index) => `
+            <div class="is-drill ${m.cardBg} border rounded-xl p-3 flex flex-col justify-between gap-2" data-wo-index="${index}">
+              <div class="flex items-center gap-2 min-w-0">
+                <div class="w-6 h-6 rounded-lg ${m.iconBg} ${m.shadow} text-white flex items-center justify-center shrink-0">
+                  <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                    ${m.icon}
+                  </svg>
+                </div>
+                <span class="text-[12px] font-medium text-slate-600 truncate">${m.label}</span>
+              </div>
+              <div>
+                <div class="text-[22px] leading-none font-bold text-slate-900 tabular-nums tracking-tight">${m.value}</div>
+                <div class="text-[10.5px] leading-snug mt-1.5 tabular-nums whitespace-nowrap">${m.subHtml}</div>
+              </div>
+            </div>
+          `).join('');
+        }
+
+        /* -------------------------------------------------------------------
+         * 8. 模块四：四维 Top 10 合并排行榜（Tab 切换 + Top 5 / Top 10 展开）
+         * ------------------------------------------------------------------- */
+        let activeRankKey = 'consult';
+        let isRankExpanded = false;
+
+        function renderRankingCard() {
+          const tabsEl = document.getElementById('rank-tabs');
+          const listEl = document.getElementById('rank-list');
+          const headerIcon = document.getElementById('rank-header-icon');
+          const badgeTag = document.getElementById('rank-badge-tag');
+          const subLabel = document.getElementById('rank-sub-label');
+          const subSummary = document.getElementById('rank-sub-summary');
+          const toggleText = document.getElementById('rank-toggle-text');
+          const toggleChevron = document.getElementById('rank-toggle-chevron');
+          if (!tabsEl || !listEl) return;
+
+          const currentDim = rankingDimensions.find((d) => d.key === activeRankKey) || rankingDimensions[0];
+
+          // 渲染 4 等分 Tab
+          tabsEl.innerHTML = rankingDimensions.map((dim) => {
+            const isActive = dim.key === currentDim.key;
+            return `
+              <button type="button" data-rank-key="${dim.key}" role="tab" aria-selected="${isActive}"
+                class="rank-tab-btn min-h-[34px] px-1 rounded-lg text-[12px] transition-all active:scale-[0.97] cursor-pointer whitespace-nowrap ${
+                  isActive
+                    ? 'bg-white text-slate-900 font-semibold shadow-[0_1px_4px_rgba(15,23,42,0.08)]'
+                    : 'text-slate-500 font-medium'
+                }">
+                ${dim.tabLabel}
+              </button>
+            `;
+          }).join('');
+
+          tabsEl.querySelectorAll('.rank-tab-btn').forEach((btn) => {
+            btn.addEventListener('click', () => {
+              const nextKey = btn.getAttribute('data-rank-key');
+              if (nextKey === activeRankKey) return;
+              activeRankKey = nextKey;
+              isRankExpanded = false; // 切换维度回到 Top 5，保持轻量浏览
+              renderRankingCard();
+            });
+          });
+
+          // 更新卡片标题图标与汇总副标题
+          if (headerIcon) {
+            headerIcon.innerHTML = currentDim.icon;
+            headerIcon.style.color = currentDim.color;
+          }
+          if (badgeTag) badgeTag.textContent = currentDim.tag;
+          if (subLabel) subLabel.textContent = currentDim.subLabel;
+          if (subSummary) subSummary.textContent = currentDim.subSummary;
+
+          // 渲染 Top 5 或全部 Top 10（双行结构避免长品类名称被截断）
+          const maxVal = Math.max(...currentDim.data.map((d) => d.value));
+          const visibleItems = isRankExpanded ? currentDim.data : currentDim.data.slice(0, 5);
+
+          listEl.innerHTML = visibleItems.map((item, idx) => {
+            const widthPct = Math.max(4, (item.value / maxVal) * 100);
+            const badgeStyle = idx < 3
+              ? `${currentDim.topBadge[idx]} font-bold`
+              : 'text-slate-400 font-medium bg-slate-100';
+
+            return `
+              <div class="is-drill px-2 py-1.5 rounded-lg bg-white hover:bg-[#F7FAFF] transition-colors"
+                data-rank-name="${item.name}" data-rank-dim="${currentDim.key}">
+                <div class="flex items-center justify-between gap-2 mb-1.5">
+                  <div class="flex items-center gap-2 min-w-0">
+                    <span class="w-5 h-5 rounded-md text-[10.5px] flex items-center justify-center shrink-0 tabular-nums ${badgeStyle}">
+                      ${item.rank}
+                    </span>
+                    <span class="text-[12.5px] font-medium text-slate-800 truncate">${item.name}</span>
+                  </div>
+                  <div class="flex items-center gap-2 shrink-0 tabular-nums">
+                    <span class="text-[13px] font-bold text-slate-900">${item.value}</span>
+                    <span class="text-[11.5px] text-slate-400 w-[40px] text-right">${item.pct}</span>
+                  </div>
+                </div>
+                <div class="pl-7">
+                  <div class="w-full h-[6px] rounded-full bg-[#F1F5F9] overflow-hidden">
+                    <div class="h-full rounded-full bg-gradient-to-r ${currentDim.gradient} transition-all duration-400"
+                      style="width: ${widthPct.toFixed(1)}%;"></div>
+                  </div>
+                </div>
+              </div>
+            `;
+          }).join('');
+
+          // 维度级下钻入口文案
+          const drillEl = document.getElementById('rank-drill');
+          if (drillEl) {
+            drillEl.innerHTML = '<span class="is-drill" data-rank-dim="' + currentDim.key +
+              '" data-rank-name="' + currentDim.data[0].name + '">查看「' + currentDim.tabLabel +
+              '」维度全部明细 ›</span>';
+          }
+
+          // 更新展开/收起按钮文案与箭头方向
+          if (toggleText) {
+            toggleText.textContent = isRankExpanded ? '收起排行' : '展开查看全部 Top 10';
+          }
+          if (toggleChevron) {
+            toggleChevron.style.transform = isRankExpanded ? 'rotate(180deg)' : 'rotate(0deg)';
+          }
+        }
+
+        function initRankingToggle() {
+          const btn = document.getElementById('rank-toggle-btn');
+          if (!btn) return;
+          btn.addEventListener('click', () => {
+            isRankExpanded = !isRankExpanded;
+            renderRankingCard();
+          });
+        }
+
+        /* -------------------------------------------------------------------
+         * 9. 平滑单调三次样条路径生成（丝滑且绝不越界过冲）
+         * ------------------------------------------------------------------- */
+        function buildMonotoneSplinePath(pts) {
+          const n = pts.length;
+          if (n === 0) return '';
+          if (n === 1) return `M ${pts[0].x.toFixed(1)} ${pts[0].y.toFixed(1)}`;
+          if (n === 2) return `M ${pts[0].x.toFixed(1)} ${pts[0].y.toFixed(1)} L ${pts[1].x.toFixed(1)} ${pts[1].y.toFixed(1)}`;
+
+          const dx = [];
+          const dy = [];
+          const m = [];
+          for (let i = 0; i < n - 1; i++) {
+            dx[i] = pts[i + 1].x - pts[i].x;
+            dy[i] = pts[i + 1].y - pts[i].y;
+            m[i] = dy[i] / (dx[i] || 1);
+          }
+
+          const c1 = new Array(n).fill(0);
+          c1[0] = m[0];
+          c1[n - 1] = m[n - 2];
+          for (let i = 1; i < n - 1; i++) {
+            if (m[i - 1] * m[i] <= 0) {
+              c1[i] = 0;
+            } else {
+              const common = dx[i - 1] + dx[i];
+              c1[i] = (3 * common) / ((common + dx[i]) / m[i - 1] + (common + dx[i - 1]) / m[i]);
+            }
+          }
+
+          let d = `M ${pts[0].x.toFixed(1)} ${pts[0].y.toFixed(1)}`;
+          for (let i = 0; i < n - 1; i++) {
+            const p1 = pts[i];
+            const p2 = pts[i + 1];
+            const h = dx[i];
+            const cp1x = p1.x + h / 3;
+            const cp1y = p1.y + (c1[i] * h) / 3;
+            const cp2x = p2.x - h / 3;
+            const cp2y = p2.y - (c1[i + 1] * h) / 3;
+            d += ` C ${cp1x.toFixed(1)} ${cp1y.toFixed(1)}, ${cp2x.toFixed(1)} ${cp2y.toFixed(1)}, ${p2.x.toFixed(1)} ${p2.y.toFixed(1)}`;
+          }
+          return d;
+        }
+
+        /* -------------------------------------------------------------------
+         * 10. 通用移动端触控/点击图表交互绑定（支持 touchstart / touchmove / click / mousemove）
+         * ------------------------------------------------------------------- */
+        function bindChartScrubInteraction(wrapEl, padLeft, padRight, onSelectIndex) {
+          if (!wrapEl) return;
+
+          function calcIndexFromClientX(clientX) {
+            const rect = wrapEl.getBoundingClientRect();
+            const plotW = Math.max(1, rect.width - padLeft - padRight);
+            const rel = (clientX - rect.left - padLeft) / plotW;
+            const clamped = Math.max(0, Math.min(1, rel));
+            return Math.round(clamped * (dates30.length - 1));
+          }
+
+          let touchStartX = 0;
+          let touchStartY = 0;
+          let isHorizontalScrub = false;
+
+          wrapEl.addEventListener('touchstart', (e) => {
+            if (!e.touches || !e.touches.length) return;
+            const t = e.touches[0];
+            touchStartX = t.clientX;
+            touchStartY = t.clientY;
+            isHorizontalScrub = false;
+            onSelectIndex(calcIndexFromClientX(t.clientX));
+          }, { passive: true });
+
+          wrapEl.addEventListener('touchmove', (e) => {
+            if (!e.touches || !e.touches.length) return;
+            const t = e.touches[0];
+            const dx = Math.abs(t.clientX - touchStartX);
+            const dy = Math.abs(t.clientY - touchStartY);
+            if (!isHorizontalScrub && dx > 6 && dx >= dy) {
+              isHorizontalScrub = true;
+            }
+            if (isHorizontalScrub) {
+              e.preventDefault();
+              onSelectIndex(calcIndexFromClientX(t.clientX));
+            }
+          }, { passive: false });
+
+          wrapEl.addEventListener('click', (e) => {
+            onSelectIndex(calcIndexFromClientX(e.clientX));
+          });
+
+          wrapEl.addEventListener('mousemove', (e) => {
+            if (e.pointerType === 'touch') return;
+            onSelectIndex(calcIndexFromClientX(e.clientX));
+          });
+        }
+
+        /* -------------------------------------------------------------------
+         * 11. 模块五 · 图表 1：单房日均送物趋势
+         * ------------------------------------------------------------------- */
+        let deliverySelectedIdx = 24; // 默认定位峰值日 10.31（3.90）
+
+        function renderDeliveryLegend() {
+          const el = document.getElementById('delivery-legend');
+          if (!el) return;
+
+          el.innerHTML = deliverySeries.map((s) => {
+            const cls = s.active
+              ? 'bg-[#F0F7FF] text-slate-800 border-[#CBE0FF] font-semibold'
+              : 'bg-[#F8FAFC] text-slate-400 border-slate-200/70 font-medium';
+            return `
+              <button type="button" data-key="${s.key}"
+                class="del-legend-btn shrink-0 min-h-[30px] inline-flex items-center gap-1.5 text-[11.5px] px-2.5 rounded-full border active:scale-[0.97] transition-all cursor-pointer ${cls}">
+                <span class="w-2 h-2 rounded-full shrink-0" style="background-color: ${s.color}; opacity: ${s.active ? 1 : 0.35};"></span>
+                <span>${s.label}</span>
+              </button>
+            `;
+          }).join('');
+
+          el.querySelectorAll('.del-legend-btn').forEach((btn) => {
+            btn.addEventListener('click', () => {
+              const key = btn.getAttribute('data-key');
+              const item = deliverySeries.find((s) => s.key === key);
+              if (!item) return;
+              const activeCount = deliverySeries.filter((s) => s.active).length;
+              if (item.active && activeCount === 1) {
+                showToast('请至少保留一条送物趋势曲线用于数据对比');
+                return;
+              }
+              item.active = !item.active;
+              renderDeliveryLegend();
+              renderDeliveryReadout();
+              drawDeliveryChart();
+            });
+          });
+        }
+
+        function renderDeliveryReadout() {
+          const box = document.getElementById('delivery-readout');
+          if (!box) return;
+
+          const idx = deliverySelectedIdx;
+          const dateLabel = `2026-${dates30[idx].replace('.', '-')}`;
+          const isPeak = idx === 24;
+          const isLatest = idx === dates30.length - 1;
+          const tagHtml = isPeak
+            ? '<span class="px-1.5 py-0.5 rounded bg-[#1677FF] text-white text-[10px] font-semibold">峰值日</span>'
+            : isLatest
+              ? '<span class="px-1.5 py-0.5 rounded bg-slate-200/80 text-slate-600 text-[10px] font-medium">最新日</span>'
+              : '<span class="text-[10.5px] text-slate-400">左右滑动切换</span>';
+
+          const metricsHtml = deliverySeries
+            .filter((s) => s.active)
+            .map((s) => `
+              <span class="inline-flex items-center gap-1 text-[11.5px] bg-white border border-[#E6EFFC] px-2 py-0.5 rounded-lg">
+                <span class="w-1.5 h-1.5 rounded-full shrink-0" style="background-color: ${s.color};"></span>
+                <span class="text-slate-500">${s.label}</span>
+                <span class="font-bold text-slate-900">${s.values[idx].toFixed(2)}</span>
+              </span>
+            `).join('');
+
+          box.innerHTML = `
+            <div class="flex items-center justify-between gap-2 mb-1.5">
+              <div class="flex items-center gap-1.5">
+                <span class="text-[11.5px] font-semibold text-slate-700 font-mono">${dateLabel}</span>
+                ${tagHtml}
+              </div>
+              <span class="text-[10.5px] text-slate-400">单位：件/房·日</span>
+            </div>
+            <div class="flex flex-wrap items-center gap-1.5">${metricsHtml}</div>
+          `;
+        }
+
+        function drawDeliveryChart() {
+          const wrap = document.getElementById('delivery-chart-wrap');
+          const svg = document.getElementById('delivery-chart-svg');
+          if (!wrap || !svg) return;
+
+          const W = Math.max(280, Math.round(wrap.clientWidth));
+          const H = Math.max(200, Math.round(wrap.clientHeight));
+          svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+
+          const pad = { top: 24, right: 14, bottom: 24, left: 26 };
+          const plotW = W - pad.left - pad.right;
+          const plotH = H - pad.top - pad.bottom;
+          const yMax = 4;
+
+          const getX = (i) => pad.left + (i / (dates30.length - 1)) * plotW;
+          const getY = (v) => pad.top + plotH - (v / yMax) * plotH;
+
+          let html = `
+            <defs>
+              <linearGradient id="m-grad-total" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#1677FF" stop-opacity="0.22" />
+                <stop offset="100%" stop-color="#1677FF" stop-opacity="0.01" />
+              </linearGradient>
+              <linearGradient id="m-grad-water" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#13C2C2" stop-opacity="0.16" />
+                <stop offset="100%" stop-color="#13C2C2" stop-opacity="0.01" />
+              </linearGradient>
+            </defs>
+          `;
+
+          // Y 轴网格与刻度
+          [0, 1, 2, 3, 4].forEach((tick) => {
+            const y = getY(tick);
+            html += `
+              <line x1="${pad.left}" y1="${y}" x2="${W - pad.right}" y2="${y}"
+                stroke="${tick === 0 ? '#E2E8F0' : '#F1F5F9'}"
+                stroke-width="1" ${tick === 0 ? '' : 'stroke-dasharray="3 3"'} />
+              <text x="${pad.left - 7}" y="${y + 3.5}" text-anchor="end" fill="#94A3B8" font-size="10.5" class="tabular-nums">${tick}</text>
+            `;
+          });
+
+          // X 轴精简 5 个日期刻度
+          mobileXTickIndices.forEach((idx) => {
+            const x = getX(idx);
+            const anchor = idx === 0 ? 'start' : idx === dates30.length - 1 ? 'end' : 'middle';
+            html += `
+              <text x="${x}" y="${H - 5}" text-anchor="${anchor}" fill="#94A3B8" font-size="10.5" class="tabular-nums">${dates30[idx]}</text>
+            `;
+          });
+
+          // 绘制激活的平滑曲线与渐变面积
+          deliverySeries.forEach((s) => {
+            if (!s.active) return;
+            const pts = s.values.map((v, i) => ({ x: getX(i), y: getY(v) }));
+            const path = buildMonotoneSplinePath(pts);
+
+            if (s.key === 'total' || s.key === 'water') {
+              const areaPath = `${path} L ${pts[pts.length - 1].x.toFixed(1)} ${getY(0).toFixed(1)} L ${pts[0].x.toFixed(1)} ${getY(0).toFixed(1)} Z`;
+              html += `<path d="${areaPath}" fill="url(#m-grad-${s.key})" />`;
+            }
+
+            html += `
+              <path d="${path}" fill="none" stroke="${s.color}"
+                stroke-width="${s.key === 'total' ? 2.2 : 1.75}"
+                stroke-linecap="round" stroke-linejoin="round" />
+            `;
+
+            // 峰值 3.90（10.31, idx=24）醒目标注
+            if (s.key === 'total') {
+              const px = getX(24);
+              const py = getY(3.90);
+              html += `
+                <circle cx="${px}" cy="${py}" r="5.5" fill="#1677FF" fill-opacity="0.18" />
+                <circle cx="${px}" cy="${py}" r="3" fill="#FFFFFF" stroke="#1677FF" stroke-width="2" />
+                <rect x="${px - 18}" y="${py - 21}" width="36" height="15" rx="7.5" fill="#1677FF" />
+                <text x="${px}" y="${py - 10}" text-anchor="middle" fill="#FFFFFF" font-size="9.5" font-weight="700" class="tabular-nums">3.90</text>
+              `;
+            }
+          });
+
+          // 选中日期垂直辅助线与数据高亮点
+          const hx = getX(deliverySelectedIdx);
+          html += `<line x1="${hx}" y1="${pad.top}" x2="${hx}" y2="${getY(0)}" stroke="#94A3B8" stroke-width="1" stroke-dasharray="3 3" />`;
+          deliverySeries.forEach((s) => {
+            if (!s.active) return;
+            const hy = getY(s.values[deliverySelectedIdx]);
+            html += `<circle cx="${hx}" cy="${hy}" r="4.2" fill="#FFFFFF" stroke="${s.color}" stroke-width="2.2" />`;
+          });
+
+          svg.innerHTML = html;
+        }
+
+        /* -------------------------------------------------------------------
+         * 12. 模块五 · 图表 2：投诉趋势（保留 Y=3 红色预警虚线与标签）
+         * ------------------------------------------------------------------- */
+        let complaintSelectedIdx = dates30.length - 1; // 默认定位最新一天 11.05
+
+        function renderComplaintLegend() {
+          const el = document.getElementById('complaint-legend');
+          if (!el) return;
+
+          const items = [
+            { key: 'daily', label: '每日投诉', color: '#F25C5C', dashed: false, active: complaintSeriesState.daily },
+            { key: 'ma7',   label: '7日均值',   color: '#64748B', dashed: true,  active: complaintSeriesState.ma7 }
+          ];
+
+          el.innerHTML = items.map((item) => {
+            const cls = item.active
+              ? 'bg-[#F0F7FF] text-slate-800 border-[#CBE0FF] font-semibold'
+              : 'bg-[#F8FAFC] text-slate-400 border-slate-200/70 font-medium';
+            const indicator = item.dashed
+              ? `<span class="w-3 border-t-[1.5px] border-dashed shrink-0" style="border-color: ${item.color}; opacity: ${item.active ? 1 : 0.4};"></span>`
+              : `<span class="w-2 h-2 rounded-full shrink-0" style="background-color: ${item.color}; opacity: ${item.active ? 1 : 0.4};"></span>`;
+            return `
+              <button type="button" data-key="${item.key}"
+                class="comp-legend-btn min-h-[30px] inline-flex items-center gap-1.5 text-[11.5px] px-2.5 rounded-full border active:scale-[0.97] transition-all cursor-pointer ${cls}">
+                ${indicator}
+                <span>${item.label}</span>
+              </button>
+            `;
+          }).join('');
+
+          el.querySelectorAll('.comp-legend-btn').forEach((btn) => {
+            btn.addEventListener('click', () => {
+              const key = btn.getAttribute('data-key');
+              const activeCount = (complaintSeriesState.daily ? 1 : 0) + (complaintSeriesState.ma7 ? 1 : 0);
+              if (complaintSeriesState[key] && activeCount === 1) {
+                showToast('请至少保留一条投诉趋势曲线');
+                return;
+              }
+              complaintSeriesState[key] = !complaintSeriesState[key];
+              renderComplaintLegend();
+              renderComplaintReadout();
+              drawComplaintChart();
+            });
+          });
+        }
+
+        function renderComplaintReadout() {
+          const box = document.getElementById('complaint-readout');
+          if (!box) return;
+
+          const idx = complaintSelectedIdx;
+          const dateLabel = `2026-${dates30[idx].replace('.', '-')}`;
+          const count = complaintDaily[idx];
+          const ma = complaintMA7[idx];
+          const isWarn = count >= 3;
+
+          box.innerHTML = `
+            <div class="flex items-center justify-between gap-2 mb-1.5">
+              <span class="text-[11.5px] font-semibold text-slate-700 font-mono">${dateLabel}</span>
+              <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                isWarn
+                  ? 'bg-[#FFF1F0] text-[#F25C5C] border border-[#FFCCC7]'
+                  : 'bg-[#ECFDF5] text-[#10B981] border border-[#D1FAE5]'
+              }">
+                ${isWarn ? '触及预警阈值' : '正常范围'}
+              </span>
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+              <span class="inline-flex items-center gap-1.5 text-[11.5px] bg-white border border-[#F8E2E2] px-2 py-0.5 rounded-lg">
+                <span class="w-1.5 h-1.5 rounded-full bg-[#F25C5C]"></span>
+                <span class="text-slate-500">当日投诉</span>
+                <span class="font-bold ${isWarn ? 'text-[#F25C5C]' : 'text-slate-900'}">${count} 件</span>
+              </span>
+              <span class="inline-flex items-center gap-1.5 text-[11.5px] bg-white border border-slate-200/80 px-2 py-0.5 rounded-lg">
+                <span class="w-2.5 border-t-[1.5px] border-dashed border-slate-500"></span>
+                <span class="text-slate-500">7日均值</span>
+                <span class="font-bold text-slate-800">${ma.toFixed(2)} 件</span>
+              </span>
+            </div>
+          `;
+        }
+
+        function drawComplaintChart() {
+          const wrap = document.getElementById('complaint-chart-wrap');
+          const svg = document.getElementById('complaint-chart-svg');
+          if (!wrap || !svg) return;
+
+          const W = Math.max(280, Math.round(wrap.clientWidth));
+          const H = Math.max(200, Math.round(wrap.clientHeight));
+          svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+
+          const pad = { top: 24, right: 14, bottom: 24, left: 26 };
+          const plotW = W - pad.left - pad.right;
+          const plotH = H - pad.top - pad.bottom;
+          const yMax = 3;
+
+          const getX = (i) => pad.left + (i / (dates30.length - 1)) * plotW;
+          const getY = (v) => pad.top + plotH - (v / yMax) * plotH;
+
+          let html = `
+            <defs>
+              <linearGradient id="m-grad-complaint" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#F25C5C" stop-opacity="0.22" />
+                <stop offset="100%" stop-color="#F25C5C" stop-opacity="0.01" />
+              </linearGradient>
+            </defs>
+          `;
+
+          // Y 轴网格与 Y=3 红色预警虚线
+          [0, 1, 2, 3].forEach((tick) => {
+            const y = getY(tick);
+            if (tick === 3) {
+              html += `
+                <line x1="${pad.left}" y1="${y}" x2="${W - pad.right}" y2="${y}"
+                  stroke="#F25C5C" stroke-opacity="0.72" stroke-width="1.3" stroke-dasharray="4 3" />
+              `;
+            } else {
+              html += `
+                <line x1="${pad.left}" y1="${y}" x2="${W - pad.right}" y2="${y}"
+                  stroke="${tick === 0 ? '#E2E8F0' : '#F1F5F9'}"
+                  stroke-width="1" ${tick === 0 ? '' : 'stroke-dasharray="3 3"'} />
+              `;
+            }
+            html += `
+              <text x="${pad.left - 7}" y="${y + 3.5}" text-anchor="end" fill="${tick === 3 ? '#F25C5C' : '#94A3B8'}" font-size="10.5" font-weight="${tick === 3 ? '600' : '400'}" class="tabular-nums">${tick}</text>
+            `;
+          });
+
+          // 右上角预警阈值标签
+          const tagW = 86;
+          const tagX = W - pad.right - tagW;
+          const tagY = getY(3) - 19;
+          html += `
+            <rect x="${tagX}" y="${tagY}" width="${tagW}" height="15" rx="7.5" fill="#FFF1F0" stroke="#FFCCC7" stroke-width="0.8" />
+            <text x="${tagX + tagW / 2}" y="${tagY + 11}" text-anchor="middle" fill="#F25C5C" font-size="9.5" font-weight="600">预警阈值 3 件/日</text>
+          `;
+
+          // X 轴精简 5 个日期刻度
+          mobileXTickIndices.forEach((idx) => {
+            const x = getX(idx);
+            const anchor = idx === 0 ? 'start' : idx === dates30.length - 1 ? 'end' : 'middle';
+            html += `
+              <text x="${x}" y="${H - 5}" text-anchor="${anchor}" fill="#94A3B8" font-size="10.5" class="tabular-nums">${dates30[idx]}</text>
+            `;
+          });
+
+          // 每日投诉平滑面积折线
+          if (complaintSeriesState.daily) {
+            const dailyPts = complaintDaily.map((v, i) => ({ x: getX(i), y: getY(v) }));
+            const path = buildMonotoneSplinePath(dailyPts);
+            const areaPath = `${path} L ${dailyPts[dailyPts.length - 1].x.toFixed(1)} ${getY(0).toFixed(1)} L ${dailyPts[0].x.toFixed(1)} ${getY(0).toFixed(1)} Z`;
+
+            html += `<path d="${areaPath}" fill="url(#m-grad-complaint)" />`;
+            html += `<path d="${path}" fill="none" stroke="#F25C5C" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" />`;
+
+            // 5 次触及 3 件/日的波峰标注点
+            let firstPeakLabeled = false;
+            complaintDaily.forEach((v, idx) => {
+              if (v === 3) {
+                const px = getX(idx);
+                const py = getY(v);
+                html += `<circle cx="${px}" cy="${py}" r="3" fill="#FFFFFF" stroke="#F25C5C" stroke-width="1.9" />`;
+                if (!firstPeakLabeled) {
+                  html += `<text x="${px}" y="${py - 7}" text-anchor="middle" fill="#F25C5C" font-size="10" font-weight="700" class="tabular-nums">3</text>`;
+                  firstPeakLabeled = true;
+                }
+              }
+            });
+          }
+
+          // 7 日均值虚线
+          if (complaintSeriesState.ma7) {
+            const maPts = complaintMA7.map((v, i) => ({ x: getX(i), y: getY(v) }));
+            const maPath = buildMonotoneSplinePath(maPts);
+            html += `<path d="${maPath}" fill="none" stroke="#64748B" stroke-width="1.5" stroke-dasharray="4 3" stroke-linecap="round" />`;
+          }
+
+          // 选中日期辅助线与高亮点
+          const hx = getX(complaintSelectedIdx);
+          html += `<line x1="${hx}" y1="${pad.top}" x2="${hx}" y2="${getY(0)}" stroke="#94A3B8" stroke-width="1" stroke-dasharray="3 3" />`;
+          if (complaintSeriesState.daily) {
+            const hy = getY(complaintDaily[complaintSelectedIdx]);
+            html += `<circle cx="${hx}" cy="${hy}" r="4.5" fill="#FFFFFF" stroke="#F25C5C" stroke-width="2.2" />`;
+          }
+          if (complaintSeriesState.ma7) {
+            const my = getY(complaintMA7[complaintSelectedIdx]);
+            html += `<circle cx="${hx}" cy="${my}" r="3.4" fill="#FFFFFF" stroke="#64748B" stroke-width="1.8" />`;
+          }
+
+          svg.innerHTML = html;
+        }
+
+        /* -------------------------------------------------------------------
+         * 13. 模块六：工单动态 / 预警动态时间轴（支持 2 行标题）与双 Tab 切换
+         * ------------------------------------------------------------------- */
+        function renderOrderTimeline() {
+          const el = document.getElementById('order-timeline');
+          if (!el) return;
+
+          const itemsHtml = orderFeedData.map((item) => {
+            const isRepair = item.type === 'repair';
+            const serviceIcon = isRepair
+              ? '<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>'
+              : '<path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/>';
+            const sourceIcon = isRepair
+              ? '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>'
+              : '<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>';
+
+            return `
+              <div class="relative flex items-start gap-2.5 p-3 rounded-xl bg-[#F8FAFC] border border-[#EDF2F7]">
+                <!-- 时间轴节点圆点 -->
+                <span class="absolute -left-[17px] top-4 w-2.5 h-2.5 rounded-full ring-4 ring-white" style="background-color: ${item.dotColor};"></span>
+                <!-- 业务图标 -->
+                <div class="w-7 h-7 rounded-lg bg-white border border-slate-200/70 flex items-center justify-center shrink-0 mt-0.5 shadow-[0_1px_2px_rgba(15,23,42,0.03)]" style="color: ${item.dotColor};">
+                  <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    ${serviceIcon}
+                  </svg>
+                </div>
+                <!-- 标题（最多 2 行，防止窄屏截断）+ 状态 + 来源时间 -->
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-start justify-between gap-2">
+                    <p class="text-[12.5px] font-semibold text-slate-800 leading-snug line-clamp-2">${item.title}</p>
+                    <span class="shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-[#ECFDF5] text-[#10B981] border border-[#D1FAE5] mt-0.5">
+                      ${item.status}
+                    </span>
+                  </div>
+                  <div class="flex items-center justify-between gap-2 mt-1.5 text-[11px] text-slate-400">
+                    <span class="inline-flex items-center gap-1 text-slate-500">
+                      <svg class="w-3 h-3 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                        ${sourceIcon}
+                      </svg>
+                      ${item.source}
+                    </span>
+                    <span class="font-mono tabular-nums">${item.time}</span>
+                  </div>
+                </div>
+              </div>
+            `;
+          }).join('');
+
+          el.innerHTML = `<div class="absolute left-[2px] top-4 bottom-4 w-px bg-slate-200/80 pointer-events-none"></div>` + itemsHtml;
+        }
+
+        function renderAlertTimeline() {
+          const el = document.getElementById('alert-timeline');
+          if (!el) return;
+
+          const itemsHtml = alertFeedData.map((item) => {
+            const alertIcon = item.type === 'timeout'
+              ? '<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 1.5"/><path d="M5 3 2 6M22 6l-3-3"/>'
+              : item.type === 'complaint'
+                ? '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M12 8v4"/><path d="M12 16h.01"/>'
+                : '<path d="M17 14V2"/><path d="M9 18.12 10 14H4.17a2 2 0 0 1-1.92-2.56l2.33-8A2 2 0 0 1 6.5 2H20a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2.76a2 2 0 0 0-1.79 1.11L12 22a3.13 3.13 0 0 1-3-3.88Z"/>';
+            const userIcon = '<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>';
+
+            return `
+              <div class="relative flex items-start gap-2.5 p-3 rounded-xl bg-[#F8FAFC] border border-[#EDF2F7]">
+                <!-- 时间轴节点圆点 -->
+                <span class="absolute -left-[17px] top-4 w-2.5 h-2.5 rounded-full ring-4 ring-white" style="background-color: ${item.dotColor};"></span>
+                <!-- 预警类型图标 -->
+                <div class="w-7 h-7 rounded-lg bg-white border border-slate-200/70 flex items-center justify-center shrink-0 mt-0.5 shadow-[0_1px_2px_rgba(15,23,42,0.03)]" style="color: ${item.dotColor};">
+                  <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    ${alertIcon}
+                  </svg>
+                </div>
+                <!-- 标题 + 预警类型标签 + 负责人与时间 -->
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-start justify-between gap-2">
+                    <p class="text-[12.5px] font-semibold text-slate-800 leading-snug line-clamp-2">${item.title}</p>
+                    <span class="shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded border mt-0.5 ${item.badgeClass}">
+                      ${item.status}
+                    </span>
+                  </div>
+                  <div class="flex items-center justify-between gap-2 mt-1.5 text-[11px] text-slate-400">
+                    <span class="inline-flex items-center gap-1 text-slate-500">
+                      <svg class="w-3 h-3 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                        ${userIcon}
+                      </svg>
+                      ${item.source}
+                    </span>
+                    <span class="font-mono tabular-nums">${item.time}</span>
+                  </div>
+                </div>
+              </div>
+            `;
+          }).join('');
+
+          el.innerHTML = `<div class="absolute left-[2px] top-4 bottom-4 w-px bg-slate-200/80 pointer-events-none"></div>` + itemsHtml;
+        }
+
+        function initFeedTabs() {
+          const orderBtn = document.getElementById('tab-order-btn');
+          const alertBtn = document.getElementById('tab-alert-btn');
+          const orderPanel = document.getElementById('panel-order');
+          const alertPanel = document.getElementById('panel-alert');
+          if (!orderBtn || !alertBtn || !orderPanel || !alertPanel) return;
+
+          function setTab(mode) {
+            const isOrder = mode === 'order';
+            orderBtn.setAttribute('aria-selected', String(isOrder));
+            alertBtn.setAttribute('aria-selected', String(!isOrder));
+
+            orderBtn.classList.toggle('text-[#1677FF]', isOrder);
+            orderBtn.classList.toggle('font-semibold', isOrder);
+            orderBtn.classList.toggle('border-[#1677FF]', isOrder);
+            orderBtn.classList.toggle('text-slate-500', !isOrder);
+            orderBtn.classList.toggle('font-medium', !isOrder);
+            orderBtn.classList.toggle('border-transparent', !isOrder);
+
+            alertBtn.classList.toggle('text-[#1677FF]', !isOrder);
+            alertBtn.classList.toggle('font-semibold', !isOrder);
+            alertBtn.classList.toggle('border-[#1677FF]', !isOrder);
+            alertBtn.classList.toggle('text-slate-500', isOrder);
+            alertBtn.classList.toggle('font-medium', isOrder);
+            alertBtn.classList.toggle('border-transparent', isOrder);
+
+            orderPanel.classList.toggle('hidden', !isOrder);
+            alertPanel.classList.toggle('hidden', isOrder);
+          }
+
+          orderBtn.addEventListener('click', () => setTab('order'));
+          alertBtn.addEventListener('click', () => setTab('alert'));
+        }
+
+        /* -------------------------------------------------------------------
+         * 14. ResizeObserver 自适应重绘（rAF 节流 + 尺寸缓存避免死循环）
+         * ------------------------------------------------------------------- */
+        function initChartResizeObserver() {
+          const delWrap = document.getElementById('delivery-chart-wrap');
+          const compWrap = document.getElementById('complaint-chart-wrap');
+          let resizeRafId = null;
+          let pendingDelivery = false;
+          let pendingComplaint = false;
+          const lastSizes = new WeakMap();
+
+          function scheduleRedraw(entries) {
+            if (!entries) {
+              pendingDelivery = true;
+              pendingComplaint = true;
+            } else {
+              for (const entry of entries) {
+                const target = entry.target;
+                const w = Math.round(target.clientWidth);
+                const h = Math.round(target.clientHeight);
+                const prev = lastSizes.get(target);
+                if (!prev || prev.w !== w || prev.h !== h) {
+                  lastSizes.set(target, { w, h });
+                  if (target === delWrap) pendingDelivery = true;
+                  if (target === compWrap) pendingComplaint = true;
+                }
+              }
+            }
+
+            if (!pendingDelivery && !pendingComplaint) return;
+
+            if (resizeRafId === null) {
+              resizeRafId = requestAnimationFrame(() => {
+                resizeRafId = null;
+                const doDel = pendingDelivery;
+                const doComp = pendingComplaint;
+                pendingDelivery = false;
+                pendingComplaint = false;
+                if (doDel) drawDeliveryChart();
+                if (doComp) drawComplaintChart();
+              });
+            }
+          }
+
+          if (typeof ResizeObserver !== 'undefined') {
+            const ro = new ResizeObserver((entries) => scheduleRedraw(entries));
+            if (delWrap) ro.observe(delWrap);
+            if (compWrap) ro.observe(compWrap);
+          } else {
+            window.addEventListener('resize', () => scheduleRedraw(null));
+          }
+        }
+
+        /* -------------------------------------------------------------------
+         * 15. 初始化启动
+         * ------------------------------------------------------------------- */
+        initPeriodControl();
+        initAnchorNav();
+        initLineTapHighlight();
+        renderCallDistribution();
+        renderWorkOrders();
+        renderRankingCard();
+        initRankingToggle();
+
+        renderDeliveryLegend();
+        renderDeliveryReadout();
+        drawDeliveryChart();
+        bindChartScrubInteraction(
+          document.getElementById('delivery-chart-wrap'),
+          26,
+          14,
+          (idx) => {
+            if (idx === deliverySelectedIdx) return;
+            deliverySelectedIdx = idx;
+            renderDeliveryReadout();
+            drawDeliveryChart();
+          }
+        );
+
+        renderComplaintLegend();
+        renderComplaintReadout();
+        drawComplaintChart();
+        bindChartScrubInteraction(
+          document.getElementById('complaint-chart-wrap'),
+          26,
+          14,
+          (idx) => {
+            if (idx === complaintSelectedIdx) return;
+            complaintSelectedIdx = idx;
+            renderComplaintReadout();
+            drawComplaintChart();
+          }
+        );
+
+        renderOrderTimeline();
+        renderAlertTimeline();
+        initFeedTabs();
+        initChartResizeObserver();
+      } catch (err) {
+        console.error('移动端驾驶舱初始化异常:', err);
+      }
+    })();
+  </script>
+
+  <script>
+    /* ================================================================
+     * 数据下钻模块
+     * 通话记录 / 通话详情 / AI 处理率 / 工单列表 / 工单详情
+     * 明细数据按概览快照口径反推生成，用于交互与排版演示
+     * ================================================================ */
+    (function () {
+      'use strict';
+
+      /* ---------------- 0. 基础工具 ---------------- */
+      var DAY = 86400000;
+      var END = new Date(2026, 10, 5);                 // 快照末日 2026-11-05
+      var SPAN = 30;
+      var TOTAL_CALLS = 4754, TOTAL_OUT = 1569, TOTAL_AI = 3963;
+      var TOTAL_ORDERS = 761;
+
+      function pad2(n) { return (n < 10 ? '0' : '') + n; }
+      function ymd(d) { return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); }
+      function shift(d, n) { return new Date(d.getTime() + n * DAY); }
+      function num(n) { return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
+      function ratio(a, b) { return b ? (a / b * 100) : 0; }
+      function clamp(v, a, b) { return Math.min(b, Math.max(a, v)); }
+      function mdDate(s) { return s.slice(5); }
+      function fmtDur(sec) { return Math.floor(sec / 60) + ':' + pad2(sec % 60); }
+
+      var seed = 20261105;
+      function rnd() {
+        seed = (seed + 0x6D2B79F5) | 0;
+        var t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+        t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+      }
+      function pick(arr) { return arr[Math.floor(rnd() * arr.length)]; }
+      function digits(n) { var s = '', i; for (i = 0; i < n; i++) s += Math.floor(rnd() * 10); return s; }
+      function shuffle(arr) {
+        var i, j, tmp;
+        for (i = arr.length - 1; i > 0; i--) {
+          j = Math.floor(rnd() * (i + 1));
+          tmp = arr[i]; arr[i] = arr[j]; arr[j] = tmp;
+        }
+        return arr;
+      }
+      function outPhone() {
+        return rnd() < 0.72
+          ? '1' + [3, 5, 7, 8, 9][Math.floor(rnd() * 5)] + digits(9)
+          : '0591' + digits(7);
+      }
+
+      var DAYS = [];
+      var iDay;
+      for (iDay = 0; iDay < SPAN; iDay++) DAYS.push(ymd(shift(END, -(SPAN - 1 - iDay))));
+
+      var WEEK = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+      function weekOf(s) {
+        var p = s.split('-');
+        return WEEK[new Date(+p[0], +p[1] - 1, +p[2]).getDay()];
+      }
+
+      /* ---------------- 1. 演示数据：通话记录 ---------------- */
+      var TEXT = {
+        '客房送餐': ['客人咨询客房送餐菜单与出餐时间，已转客房服务安排配送', '客人追加夜宵送餐，确认送餐到房的具体时间', '客人询问早餐送餐时段与可选套餐，已发送电子菜单'],
+        '送物服务': ['客人需要补充矿泉水，已确认数量并安排楼层配送', '客人需求一次性拖鞋与牙具各两份，已生成送物任务', '客人索要茶具与烧水壶，已派单至楼层服务员'],
+        '客房服务': ['客人咨询客房服务项目与收费标准，已说明并转前台跟进', '客人要求提供加湿器，已安排楼层配送'],
+        '清洁服务': ['客人要求当日客房清扫，已备注避开午休时段', '客人反馈卫生间需补充清洁，已派保洁上门处理'],
+        '问题咨询': ['客人咨询早餐时间与餐厅位置，已说明', '客人询问周边交通与景点路线，已提供指引', '客人咨询洗衣服务与取送时间，已说明流程'],
+        '入住/退房办理': ['客人咨询提前入住与延迟退房政策，已说明规则', '客人询问退房发票开具方式，已转前台处理'],
+        '客房内设备操作问题': ['客人不会使用客房智能面板，已电话指导操作', '客人咨询电视投屏设置方法，已逐步说明'],
+        '房卡门禁问题': ['客人房卡无法刷开房门，已核验身份并安排补卡', '客人反馈门锁低电量提示，已派工程处理'],
+        '账单费用咨询': ['客人核对账单中的迷你吧消费，已逐项说明', '客人咨询押金退还时间，已说明流程'],
+        '康乐设施咨询': ['客人咨询健身房与泳池开放时间，已说明', '客人询问儿童乐园预约方式，已转康乐中心'],
+        '遗留物品查询': ['客人退房后查询遗落的充电器，已登记并核对', '客人查询遗留衣物，已转客房部查找'],
+        'wifi问题': ['客人反馈房间无线网络无法连接，已指导重新连接', '客人反映网络速度较慢，已转工程排查'],
+        '餐厅咨询': ['客人咨询自助餐厅营业时间与人均价格，已说明', '客人询问餐厅包间预订，已转餐饮部'],
+        '预定房间': ['客人咨询近期房型与价格，已推荐并转预订部', '客人查询团队房预留情况，已核对档期'],
+        '投诉建议': ['客人反馈房间隔音较差影响休息，已致歉并转值班经理', '客人投诉退房等待时间过长，已登记跟进'],
+        '建议类': ['客人建议增加早餐品类，已记录并反馈餐饮部'],
+        '故障报修': ['客人报修空调异响，已生成维修工单', '客人反映卫生间下水缓慢，已派工程上门'],
+        '未归类': ['通话内容未产生有效业务信息，已标记待复核', '外线来电未说明具体需求，已转总机回拨'],
+        '未标注': ['通话时长过短，未识别到有效内容']
+      };
+
+      var CAT_PLAN = [
+        { cat: '客需类', sum: '客房送餐', n: 952 },
+        { cat: '客需类', sum: '送物服务', n: 651 },
+        { cat: '客需类', sum: '客房服务', n: 64 },
+        { cat: '客需类', sum: '清洁服务', n: 298 },
+        { cat: '咨询类', sum: '问题咨询', n: 419 },
+        { cat: '咨询类', sum: '入住/退房办理', n: 141 },
+        { cat: '咨询类', sum: '客房内设备操作问题', n: 37 },
+        { cat: '咨询类', sum: '房卡门禁问题', n: 120 },
+        { cat: '咨询类', sum: '账单费用咨询', n: 26 },
+        { cat: '咨询类', sum: '康乐设施咨询', n: 90 },
+        { cat: '咨询类', sum: '遗留物品查询', n: 90 },
+        { cat: '咨询类', sum: 'wifi问题', n: 100 },
+        { cat: '咨询类', sum: '餐厅咨询', n: 107 },
+        { cat: '预定类', sum: '预定房间', n: 839 },
+        { cat: '其他类', sum: '未归类', n: 340 },
+        { cat: '投诉类', sum: '投诉建议', n: 51 },
+        { cat: '建议类', sum: '建议类', n: 2 },
+        { cat: '未分类', sum: '未标注', n: 296 },
+        { cat: '未分类', sum: '故障报修', n: 131 }
+      ];
+
+      var ROOM_FLOOR = [11, 12, 15, 16, 17, 18, 19, 20, 21, 22, 25, 26, 27, 28];
+      var calls = [];
+
+      CAT_PLAN.forEach(function (p) {
+        var k;
+        for (k = 0; k < p.n; k++) {
+          var idx = calls.length;
+          var dayIdx = clamp(Math.floor(rnd() * SPAN), 0, SPAN - 1);
+          var hour = 7 + Math.floor(rnd() * 17);
+          calls.push({
+            id: 'C' + dayIdx + '-' + idx,
+            date: DAYS[dayIdx],
+            time: pad2(hour) + ':' + pad2(Math.floor(rnd() * 60)),
+            cat: p.cat,
+            sum: p.sum,
+            line: '',
+            caller: '',
+            callee: '',
+            room: '',
+            callType: '',
+            status: '',
+            ai: '',
+            human: '',
+            emotion: '',
+            duration: 0,
+            text: '',
+            hasTask: '',
+            aiRaw: false
+          });
+        }
+      });
+
+      /* 1.1 内外线：按概览 1,569 / 3,185 精确分配 */
+      var allIdx = [];
+      var a1;
+      for (a1 = 0; a1 < calls.length; a1++) allIdx.push(a1);
+      shuffle(allIdx);
+      var a2;
+      for (a2 = 0; a2 < TOTAL_OUT; a2++) calls[allIdx[a2]].line = '外线';
+      var a3;
+      for (a3 = 0; a3 < calls.length; a3++) if (!calls[a3].line) calls[a3].line = '内线';
+
+      /* 1.2 AI 接听：外线 1,450 + 内线 2,513 = 3,963（83.36%） */
+      var outIdx = [], inIdx = [];
+      calls.forEach(function (c, i) { (c.line === '外线' ? outIdx : inIdx).push(i); });
+      shuffle(outIdx); shuffle(inIdx);
+      var b1;
+      for (b1 = 0; b1 < 1450; b1++) calls[outIdx[b1]].aiRaw = true;
+      var b2;
+      for (b2 = 0; b2 < 2513; b2++) calls[inIdx[b2]].aiRaw = true;
+
+      /* 1.3 号码、房号、状态、情绪与内容摘要 */
+      calls.forEach(function (c) {
+        var roomNo = String(pick(ROOM_FLOOR)) + pad2(1 + Math.floor(rnd() * 28));
+        var ext = '8' + roomNo.slice(-3);
+
+        if (c.line === '内线') {
+          c.room = rnd() < 0.94 ? roomNo : '';
+          c.callType = rnd() < 0.86 ? '呼入' : '呼出';
+          c.caller = c.room ? ext : '8' + digits(3);
+          c.callee = '8188';
+        } else if (rnd() < 0.55) {
+          c.callType = '呼入';
+          c.caller = outPhone();
+          c.callee = '8188';
+          c.room = rnd() < 0.62 ? roomNo : '';
+        } else {
+          c.callType = '呼出';
+          c.caller = ext;
+          c.callee = outPhone();
+          c.room = roomNo;
+        }
+
+        var r1 = rnd();
+        if (c.aiRaw) {
+          c.status = r1 < 0.9 ? '已完成' : r1 < 0.97 ? '转人工' : r1 < 0.99 ? '未接通' : '主叫取消';
+          c.ai = '是';
+        } else {
+          c.status = r1 < 0.62 ? '已完成' : r1 < 0.8 ? '未接通' : '主叫取消';
+          c.ai = '否';
+        }
+
+        if (c.status === '未接通' || c.status === '主叫取消') c.human = '否';
+        else if (c.status === '转人工') c.human = '是';
+        else c.human = c.ai === '是' ? '否' : '是';
+
+        var taskRate = c.cat === '客需类' ? 0.72 : c.cat === '投诉类' ? 0.36 : c.cat === '未分类' ? 0.08 : 0.12;
+        c.hasTask = rnd() < taskRate ? '已生成任务单' : '无任务单';
+
+        if (c.cat === '投诉类') c.emotion = rnd() < 0.7 ? '不满' : '焦虑';
+        else if (c.cat === '建议类') c.emotion = '正常';
+        else {
+          var r2 = rnd();
+          c.emotion = r2 < 0.78 ? '正常' : r2 < 0.9 ? '满意' : r2 < 0.96 ? '焦虑' : '不满';
+        }
+
+        if (c.status === '未接通' || c.status === '主叫取消') c.duration = 0;
+        else c.duration = 12 + Math.floor(rnd() * 58) + (rnd() < 0.18 ? Math.floor(rnd() * 300) : 0);
+
+        c.text = pick(TEXT[c.sum] || TEXT['未标注']);
+      });
+
+      calls.sort(function (x, y) {
+        var a = x.date + ' ' + x.time, b = y.date + ' ' + y.time;
+        return a < b ? 1 : a > b ? -1 : 0;
+      });
+
+      /* ---------------- 2. 演示数据：工单 ---------------- */
+      var WO_ITEMS = ['矿泉水', '矿泉水', '矿泉水', '矿泉水', '矿泉水', '茶具', '剃须刀', '一次性拖鞋', '一次性牙刷', '塑料袋', '毛巾', '牙膏', '浴帽', '被子', '枕头'];
+      var WO_UNIT = { '矿泉水': '瓶', '茶具': '套', '被子': '床', '枕头': '个', '牙膏': '支', '一次性牙刷': '支', '一次性拖鞋': '双', '塑料袋': '个', '毛巾': '条', '浴帽': '个', '剃须刀': '把' };
+      var REPAIR_FAULT = ['空调不制冷，出风有异响', '卫浴洁具下水缓慢，地漏积水', '门锁识别失败，房卡无法开门', '电视无法开机，遥控器无响应', '房间灯光闪烁，床头灯不亮', '无线网络信号弱，无法连接', '热水器出水温度不稳定', '插座无电，充电无反应', '家具边角破损，需修补', '窗帘轨道脱落，无法拉动'];
+      var CLEAN_REQ = ['客房日常清扫，需更换床品并补充客用品', '退房后深度清洁，重点处理卫生间', '客人要求地面吸尘与垃圾清运', '补充毛巾与洗漱用品，简单整理房间'];
+
+      var orders = [];
+      [['送物服务', 638], ['维修工单', 52], ['清扫服务', 71], ['一键吐槽', 0]].forEach(function (p) {
+        var k;
+        for (k = 0; k < p[1]; k++) {
+          var idx = orders.length;
+          var dayIdx = clamp(Math.floor(rnd() * SPAN), 0, SPAN - 1);
+          var hour = 8 + Math.floor(rnd() * 15);
+          var seq = idx + 1;
+          var roomNo = String(pick(ROOM_FLOOR)) + pad2(1 + Math.floor(rnd() * 28));
+
+          var detail = '', qty = 0, itemName = '';
+          if (p[0] === '送物服务') {
+            itemName = pick(WO_ITEMS);
+            qty = 1 + Math.floor(rnd() * 4);
+            detail = qty + ' ' + (WO_UNIT[itemName] || '份') + itemName;
+          } else if (p[0] === '维修工单') {
+            detail = pick(REPAIR_FAULT);
+          } else if (p[0] === '清扫服务') {
+            detail = pick(CLEAN_REQ);
+          } else {
+            detail = '客人一键吐槽：服务体验待跟进';
+          }
+
+          var handler = p[0] === '维修工单'
+            ? pick(['工程-张工', '工程-李工'])
+            : p[0] === '清扫服务'
+              ? pick(['保洁-李姐', '保洁-王姐'])
+              : pick(['服务员1', '服务员2', '服务员3']);
+
+          orders.push({
+            id: 'WO' + DAYS[dayIdx].replace(/-/g, '') + '-' + ('00' + seq).slice(-3),
+            date: DAYS[dayIdx],
+            time: pad2(hour) + ':' + pad2(Math.floor(rnd() * 60)),
+            roomNo: roomNo,
+            room: roomNo.slice(0, 2) + '层' + roomNo,
+            type: p[0],
+            handler: handler,
+            detail: detail,
+            itemName: itemName,
+            qty: qty,
+            overtime: '未超时',
+            status: '已完成',
+            priority: rnd() < 0.7 ? '低优先级' : '普通优先级',
+            source: rnd() < 0.62 ? 'AI助理' : '人工创建',
+            createType: rnd() < 0.7 ? '人工' : '自动',
+            duration: 15 + Math.floor(rnd() * 40)
+          });
+        }
+      });
+
+      orders.sort(function (x, y) {
+        var a = x.date + ' ' + x.time, b = y.date + ' ' + y.time;
+        return a < b ? 1 : a > b ? -1 : 0;
+      });
+
+      /* ---------------- 3. 状态与常量 ---------------- */
+      var PERIOD_LABEL = { yesterday: '昨日', '7d': '近7天', '30d': '近30天' };
+      var CATS = ['所有', '咨询类', '投诉类', '建议类', '客需类', '预定类', '其他类'];
+      var SUMS = ['所有', '问题咨询', '入住/退房办理', '客房内设备操作问题', '房卡门禁问题', '账单费用咨询',
+        '康乐设施咨询', '遗留物品查询', 'wifi问题', '投诉建议', '建议类', '客房服务', '送物服务',
+        '清洁服务', '故障报修', '客房送餐', '预定房间', '餐厅咨询', '未归类'];
+      var ORDER_TABS = ['全部', '送物服务', '清扫服务', '维修工单', '一键吐槽'];
+      var DIST_CAT = ['客需类', '咨询类', '预定类', '其他类', '投诉类', '建议类'];
+      var RANK_SUM = {
+        '客房送餐': '客房送餐', '预定房间': '预定房间', '送物服务': '送物服务', '未归类': '未归类',
+        '入住 / 退房': '入住/退房办理', '故障报修': '故障报修', '餐厅咨询': '餐厅咨询',
+        '客房服务': '客房服务', '客房内设备操作': '客房内设备操作问题', '费用账单咨询': '账单费用咨询'
+      };
+      var WO_MAP = [
+        { type: 'all' },
+        { type: 'all', status: '已完成' },
+        { type: 'all', overtime: '已超时' },
+        { type: '送物服务' },
+        { type: '维修工单' },
+        { type: '一键吐槽' }
+      ];
+
+      var state = { call: {}, ai: {}, order: {} };
+
+      function currentPeriod() {
+        var btn = document.querySelector('.period-btn[aria-selected="true"]');
+        return btn ? btn.getAttribute('data-period') : '30d';
+      }
+      function rangeOf(p) {
+        if (p === 'yesterday') {
+          var d = ymd(END);
+          return { from: d, to: d };
+        }
+        if (p === '7d') return { from: ymd(shift(END, -6)), to: ymd(END) };
+        return { from: ymd(shift(END, -(SPAN - 1))), to: ymd(END) };
+      }
+      function inRange(d, r) { return d >= r.from && d <= r.to; }
+
+      /* ---------------- 4. 视图栈 ---------------- */
+      var stack = [];
+      function openView(id) {
+        var prev = stack[stack.length - 1];
+        if (prev) document.getElementById(prev).style.transform = 'translateX(-22%)';
+        stack.push(id);
+        var el = document.getElementById(id);
+        el.setAttribute('aria-hidden', 'false');
+        el.style.zIndex = String(40 + stack.length);
+        el.style.transform = 'translateX(0)';
+      }
+      function backView() {
+        if (!stack.length) return;
+        var top = stack.pop();
+        var el = document.getElementById(top);
+        el.style.transform = 'translateX(100%)';
+        el.style.zIndex = '';
+        el.setAttribute('aria-hidden', 'true');
+        var now = stack[stack.length - 1];
+        if (now) {
+          var n = document.getElementById(now);
+          n.style.zIndex = String(40 + stack.length);
+          n.style.transform = 'translateX(0)';
+        }
+      }
+      Array.prototype.forEach.call(document.querySelectorAll('[data-back]'), function (btn) {
+        btn.addEventListener('click', backView);
+      });
+
+      function toast(msg) {
+        var box = document.getElementById('toast-box');
+        var text = document.getElementById('toast-text');
+        if (!box || !text) return;
+        text.textContent = msg;
+        box.classList.remove('toast-hidden');
+        box.classList.add('toast-visible');
+        clearTimeout(toast._t);
+        toast._t = setTimeout(function () {
+          box.classList.remove('toast-visible');
+          box.classList.add('toast-hidden');
+        }, 2400);
+      }
+
+      /* ---------------- 5. 通用分页列表（默认 10 条，上拉加载） ---------------- */
+      function createFeed(conf) {
+        var ui = { items: [], shown: 0, loading: false, timer: null };
+
+        function listEl() { return document.getElementById(conf.listId); }
+        function footEl() { return document.getElementById(conf.footId); }
+
+        function setFoot() {
+          var left = ui.items.length - ui.shown;
+          footEl().textContent = left > 0
+            ? '上拉加载更多（已显示 ' + ui.shown + ' / ' + num(ui.items.length) + '）'
+            : '已加载全部 ' + num(ui.items.length) + ' 条';
+        }
+
+        function append() {
+          var slice = ui.items.slice(ui.shown, ui.shown + 10);
+          if (!slice.length) return;
+          ui.shown += slice.length;
+          listEl().insertAdjacentHTML('beforeend', slice.map(conf.card).join(''));
+        }
+
+        function more(isFirst) {
+          if (ui.loading) return;
+          if (ui.shown >= ui.items.length) { setFoot(); return; }
+          ui.loading = true;
+          footEl().textContent = '加载中…';
+          function run() {
+            ui.loading = false;
+            append();
+            setFoot();
+            var wrap = document.getElementById(conf.scrollId);
+            if (wrap && wrap.scrollHeight <= wrap.clientHeight + 24 && ui.shown < ui.items.length) {
+              ui.timer = setTimeout(function () { more(false); }, 260);
+            }
+          }
+          if (isFirst) run(); else setTimeout(run, 300);
+        }
+
+        function refresh() {
+          clearTimeout(ui.timer);
+          ui.items = conf.filter();
+          ui.shown = 0;
+          ui.loading = false;
+          listEl().innerHTML = '';
+          if (!ui.items.length) {
+            listEl().innerHTML = '<div class="empty">' +
+              '<svg class="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">' +
+              '<rect x="3" y="4" width="18" height="16" rx="2" /><path d="M3 9h18M8 14h8" /></svg>' +
+              '<p>' + conf.empty + '</p><small>可调整筛选条件后重试</small></div>';
+            footEl().textContent = '';
+            return;
+          }
+          more(true);
+        }
+
+        return { refresh: refresh, more: function () { more(false); }, ui: ui };
+      }
+
+      /* ---------------- 6. 通话记录页 ---------------- */
+      var callFeed = createFeed({
+        listId: 'call-list',
+        footId: 'call-foot',
+        scrollId: 'call-scroll',
+        empty: '暂无符合条件的通话记录',
+        card: callCardHtml,
+        filter: function () { return filterCalls(); }
+      });
+
+      function filterCalls() {
+        var s = state.call;
+        return calls.filter(function (c) {
+          if (!inRange(c.date, s)) return false;
+          if (s.tab === 'inbound' && c.line !== '内线') return false;
+          if (s.tab === 'outbound' && c.line !== '外线') return false;
+          if (s.cat !== 'all' && c.cat !== s.cat) return false;
+          if (s.sum !== 'all' && c.sum !== s.sum) return false;
+          if (s.room && c.room.indexOf(s.room) < 0) return false;
+          return true;
+        });
+      }
+
+      function catTag(cat) {
+        var map = {
+          '客需类': 'tag-blue', '咨询类': 'tag-teal', '投诉类': 'tag-red', '建议类': 'tag-purple',
+          '预定类': 'tag-amber', '其他类': 'tag-gray', '未分类': 'tag-gray'
+        };
+        return map[cat] || 'tag-gray';
+      }
+      function statusTag(st) {
+        if (st === '已完成') return 'tag-green';
+        if (st === '转人工') return 'tag-purple';
+        if (st === '未接通' || st === '主叫取消') return 'tag-gray';
+        return 'tag-gray';
+      }
+      function emotionTag(em) {
+        if (em === '不满') return 'tag-red';
+        if (em === '焦虑') return 'tag-amber';
+        if (em === '满意') return 'tag-green';
+        return 'tag-blue';
+      }
+      var ICON_PLAY = '<svg class="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.14v13.72L19 12z" /></svg>';
+      var ICON_PAUSE = '<svg class="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><rect x="7" y="5" width="3.5" height="14" rx="1" /><rect x="13.5" y="5" width="3.5" height="14" rx="1" /></svg>';
+
+      function callCardHtml(c) {
+        return '<article class="rec-card is-drill" data-call-id="' + c.id + '">' +
+          '<div class="rec-l1">' +
+          '<span class="rec-time">' + mdDate(c.date) + ' ' + c.time + '</span>' +
+          '<span class="spacer"></span>' +
+          '<span class="tag ' + catTag(c.cat) + '">' + c.cat + '</span>' +
+          '<span class="tag ' + (c.line === '外线' ? 'tag-blue' : 'tag-teal') + '">' + c.line + '</span>' +
+          '<button type="button" class="mini-play" data-dur="' + c.duration + '" aria-label="播放录音">' + ICON_PLAY + '</button>' +
+          '</div>' +
+          '<div class="rec-l2">' +
+          '<span class="rec-arrow">主叫</span>' +
+          '<span class="rec-num">' + c.caller + '</span>' +
+          '<span class="rec-arrow">→</span>' +
+          '<span class="rec-room">' + (c.room ? '房间 ' + c.room : '房间 —') + '</span>' +
+          '</div>' +
+          '<div class="rec-l3">' +
+          '<span class="rec-text">' + c.text + '</span>' +
+          '<span class="rec-go">详情 ›</span>' +
+          '</div>' +
+          '</article>';
+      }
+
+      function renderCallMeta() {
+        var s = state.call;
+        var n = callFeed.ui.items.length;
+        document.getElementById('call-sub').textContent =
+          mdDate(s.from) + ' ~ ' + mdDate(s.to) + ' · 共 ' + num(n) + ' 通';
+        document.getElementById('call-count').textContent = num(n) + ' 条';
+        document.getElementById('call-date-text').textContent = mdDate(s.from) + ' ~ ' + mdDate(s.to);
+      }
+
+      function renderCallActive() {
+        var s = state.call;
+        var parts = [];
+        if (s.tab === 'outbound') parts.push('外线');
+        if (s.tab === 'inbound') parts.push('内线');
+        if (s.cat !== 'all') parts.push(s.cat);
+        if (s.sum !== 'all') parts.push(s.sum);
+        if (s.room) parts.push('房间 ' + s.room);
+        parts.push(mdDate(s.from) + '~' + mdDate(s.to));
+        var hasFilter = s.tab !== 'all' || s.cat !== 'all' || s.sum !== 'all' || !!s.room;
+        document.getElementById('call-active').innerHTML =
+          '<span>筛选：<b>' + parts.join(' · ') + '</b></span>' +
+          (hasFilter ? '<button type="button" class="link-reset" id="call-reset">重置</button>' : '');
+        var reset = document.getElementById('call-reset');
+        if (reset) reset.addEventListener('click', function () { resetCallState(); syncCallFilters(); callRefresh(); });
+      }
+
+      function syncCallFilters() {
+        var s = state.call;
+        var scope = calls.filter(function (c) { return inRange(c.date, s); });
+        var nOut = 0, nIn = 0;
+        scope.forEach(function (c) { if (c.line === '外线') nOut++; else nIn++; });
+
+        var tabs = [
+          { key: 'all', label: '全部', n: scope.length },
+          { key: 'inbound', label: '内线', n: nIn },
+          { key: 'outbound', label: '外线', n: nOut }
+        ];
+        document.getElementById('call-tabs').innerHTML = tabs.map(function (t) {
+          return '<button type="button" role="tab" aria-selected="' + (s.tab === t.key) + '" class="seg-btn' +
+            (s.tab === t.key ? ' is-on' : '') + '" data-tab="' + t.key + '">' + t.label +
+            '<em>' + num(t.n) + '</em></button>';
+        }).join('');
+
+        document.getElementById('call-cat-chips').innerHTML = CATS.map(function (c) {
+          var key = c === '所有' ? 'all' : c;
+          return '<button type="button" class="chip' + (s.cat === key ? ' is-on' : '') + '" data-cat="' + key + '">' + c + '</button>';
+        }).join('');
+
+        document.getElementById('call-sum-chips').innerHTML = SUMS.map(function (c) {
+          var key = c === '所有' ? 'all' : c;
+          return '<button type="button" class="chip' + (s.sum === key ? ' is-on' : '') + '" data-sum="' + key + '">' + c + '</button>';
+        }).join('');
+
+        document.getElementById('call-room').value = s.room;
+        document.getElementById('call-date-text').textContent = mdDate(s.from) + ' ~ ' + mdDate(s.to);
+
+        var sumWrap = document.getElementById('call-sum-chips');
+        var activeChip = sumWrap.querySelector('.chip.is-on');
+        if (activeChip) {
+          var offset = activeChip.getBoundingClientRect().left - sumWrap.getBoundingClientRect().left + sumWrap.scrollLeft;
+          sumWrap.scrollLeft = Math.max(0, offset - 28);
+        }
+      }
+
+      function callRefresh() {
+        callFeed.refresh();
+        renderCallMeta();
+        renderCallActive();
+      }
+
+      function resetCallState(opts) {
+        var r = rangeOf(currentPeriod());
+        var from = (opts && (opts.date || opts.from)) || r.from;
+        var to = (opts && (opts.date || opts.to)) || r.to;
+        state.call = {
+          tab: (opts && opts.tab) || 'all',
+          cat: (opts && opts.cat) || 'all',
+          sum: (opts && opts.sum) || 'all',
+          room: '',
+          from: from,
+          to: to
+        };
+      }
+
+      function openCall(opts) {
+        resetCallState(opts);
+        syncCallFilters();
+        callRefresh();
+        openView('view-call');
+        document.getElementById('call-scroll').scrollTop = 0;
+      }
+
+      /* 通话记录：点击播放 / 打开详情 */
+      document.getElementById('call-list').addEventListener('click', function (e) {
+        var play = e.target.closest('.mini-play');
+        if (play) {
+          e.stopPropagation();
+          togglePlay(play);
+          return;
+        }
+        var card = e.target.closest('[data-call-id]');
+        if (card) openCallDetail(card.getAttribute('data-call-id'));
+      });
+
+      function togglePlay(btn) {
+        var card = btn.closest('.rec-card');
+        var dur = +btn.getAttribute('data-dur') || 23;
+        Array.prototype.forEach.call(document.querySelectorAll('.mini-play.is-playing'), function (b) {
+          b.classList.remove('is-playing');
+          b.innerHTML = ICON_PLAY;
+          var p = b.closest('.rec-card').querySelector('.rec-prog');
+          if (p) p.remove();
+        });
+        if (btn.classList.contains('is-playing')) return;
+        if (!dur) {
+          toast('该通话未产生录音文件');
+          return;
+        }
+        btn.classList.add('is-playing');
+        btn.innerHTML = ICON_PAUSE;
+        var bar = document.createElement('div');
+        bar.className = 'rec-prog';
+        bar.innerHTML = '<i style="animation-duration:' + dur + 's"></i>';
+        card.appendChild(bar);
+        setTimeout(function () {
+          btn.classList.remove('is-playing');
+          btn.innerHTML = ICON_PLAY;
+          var p = card.querySelector('.rec-prog');
+          if (p) p.remove();
+        }, dur * 1000);
+      }
+
+      /* ---------------- 7. 通话详情 ---------------- */
+      function kv(k, v, cls) {
+        return '<div class="kv"><span class="kv-k">' + k + '</span><span class="kv-v ' + (cls || '') + '">' + v + '</span></div>';
+      }
+
+      function openCallDetail(id) {
+        var rec = null;
+        calls.forEach(function (c) { if (c.id === id) rec = c; });
+        if (!rec) return;
+
+        var body = document.getElementById('call-detail-body');
+        document.getElementById('call-detail-sub').textContent = rec.date + ' ' + rec.time + ' · ' + rec.line + '通话';
+        document.getElementById('call-detail-tag').textContent = rec.cat;
+
+        var flow = '';
+        flow += '<div class="tl-item"><span class="tl-dot"></span><div class="tl-head"><span class="tl-name">来电接入</span><span class="tl-time">' + rec.time + '</span></div><div class="tl-sub">' + rec.line + ' · ' + rec.callType + ' · 主叫 ' + rec.caller + '</div></div>';
+        flow += '<div class="tl-item"><span class="tl-dot"></span><div class="tl-head"><span class="tl-name">' +
+          (rec.ai === '是' ? 'AI 总机应答' : '人工坐席应答') + '</span><span class="tl-time">' + rec.time + '</span></div><div class="tl-sub">' +
+          (rec.ai === '是' ? 'AI 识别意图：' + rec.sum : '人工受理，登记客户诉求') + '</div></div>';
+        if (rec.hasTask === '已生成任务单') {
+          flow += '<div class="tl-item"><span class="tl-dot"></span><div class="tl-head"><span class="tl-name">生成任务单</span><span class="tl-time">' + rec.time + '</span></div><div class="tl-sub">已按「' + rec.sum + '」派发至对应部门</div></div>';
+        }
+        flow += '<div class="tl-item"><span class="tl-dot gray"></span><div class="tl-head"><span class="tl-name">通话结束</span><span class="tl-time">' + rec.time + '</span></div><div class="tl-sub">' + rec.status + ' · 通话时长 ' + fmtDur(rec.duration) + '</div></div>';
+
+        body.innerHTML =
+          '<div class="space-y-2.5">' +
+          '<div class="d-card">' +
+          '<div class="d-title"><span class="bar"></span>通话概要' +
+          '<span class="right"><span class="tag ' + statusTag(rec.status) + '">' + rec.status + '</span></span></div>' +
+          '<div class="flex items-center gap-1.5 flex-wrap">' +
+          '<span class="rec-time" style="font-size:15px;">' + mdDate(rec.date) + ' ' + rec.time + '</span>' +
+          '<span class="tag ' + catTag(rec.cat) + '">' + rec.cat + '</span>' +
+          '<span class="tag ' + (rec.line === '外线' ? 'tag-blue' : 'tag-teal') + '">' + rec.line + '</span>' +
+          '</div>' +
+          '<p style="margin-top:9px;font-size:12px;line-height:1.6;color:#475569;">' + rec.text + '</p>' +
+          '<div class="player" data-duration="' + rec.duration + '" style="margin-top:10px;">' +
+          '<button type="button" class="player-play" aria-label="播放录音">' + ICON_PLAY + '</button>' +
+          '<div class="player-track"><div class="player-fill"></div></div>' +
+          '<span class="player-time">0:00 / ' + fmtDur(rec.duration) + '</span>' +
+          '</div>' +
+          '</div>' +
+
+          '<div class="d-card">' +
+          '<div class="d-title"><span class="bar"></span>通话信息</div>' +
+          kv('通话日期', rec.date) +
+          kv('通话时间', rec.time) +
+          kv('内容分类', rec.cat) +
+          kv('内容概要', rec.sum) +
+          kv('情绪分析', '<span class="tag ' + emotionTag(rec.emotion) + '">' + rec.emotion + '</span>') +
+          kv('房间号', rec.room || '—', rec.room ? '' : 'muted') +
+          kv('是否有任务单', rec.hasTask) +
+          kv('主叫号码', rec.caller, 'mono') +
+          kv('被叫号码', rec.callee, 'mono') +
+          kv('AI总机号码', '059187514721', 'mono') +
+          kv('通话类型', rec.callType) +
+          kv('线路类型', rec.line) +
+          kv('通话状态', rec.status) +
+          kv('是否AI接听', rec.ai) +
+          kv('是否人工接听', rec.human) +
+          '</div>' +
+
+          '<div class="d-card">' +
+          '<div class="d-title"><span class="bar"></span>处理流程</div>' +
+          '<div class="tl">' + flow + '</div>' +
+          '</div>' +
+          '</div>';
+
+        bindPlayers(body);
+        openView('view-call-detail');
+        body.scrollTop = 0;
+      }
+
+      function bindPlayers(scope) {
+        Array.prototype.forEach.call(scope.querySelectorAll('.player'), function (root) {
+          if (root.getAttribute('data-bound')) return;
+          root.setAttribute('data-bound', '1');
+          var dur = +root.getAttribute('data-duration') || 23;
+          var btn = root.querySelector('.player-play');
+          var fill = root.querySelector('.player-fill');
+          var timeEl = root.querySelector('.player-time');
+          var t = 0, timer = null;
+
+          function paint() {
+            timeEl.textContent = fmtDur(t) + ' / ' + fmtDur(dur);
+            fill.style.width = (dur ? t / dur * 100 : 0) + '%';
+          }
+          function stop() {
+            if (timer) clearInterval(timer);
+            timer = null;
+            btn.classList.remove('is-playing');
+            btn.innerHTML = ICON_PLAY;
+          }
+          btn.addEventListener('click', function () {
+            if (timer) { stop(); return; }
+            if (!dur) { toast('该通话未产生录音文件'); return; }
+            if (t >= dur) t = 0;
+            btn.classList.add('is-playing');
+            btn.innerHTML = ICON_PAUSE;
+            timer = setInterval(function () {
+              t++;
+              if (t >= dur) { t = dur; paint(); stop(); return; }
+              paint();
+            }, 800);
+            paint();
+          });
+          paint();
+        });
+      }
+
+      /* ---------------- 8. AI 处理率页 ---------------- */
+      var aiFeed = createFeed({
+        listId: 'ai-list',
+        footId: 'ai-foot',
+        scrollId: 'ai-scroll',
+        empty: '所选日期内暂无通话数据',
+        card: aiCardHtml,
+        filter: function () { return aiStats(); }
+      });
+
+      function aiStats() {
+        var s = state.ai;
+        var map = {};
+        DAYS.forEach(function (d) { map[d] = { date: d, total: 0, out: 0, outAi: 0, inn: 0, innAi: 0 }; });
+        calls.forEach(function (c) {
+          if (!inRange(c.date, s)) return;
+          var m = map[c.date];
+          if (!m) return;
+          m.total++;
+          if (c.line === '外线') {
+            m.out++;
+            if (c.ai === '是') m.outAi++;
+          } else {
+            m.inn++;
+            if (c.ai === '是') m.innAi++;
+          }
+        });
+        return DAYS.filter(function (d) { return d >= s.from && d <= s.to; })
+          .sort(function (a, b) { return a < b ? 1 : -1; })
+          .map(function (d) { return map[d]; });
+      }
+
+      function aiCell(lab, val, unit, cls, line) {
+        return '<div class="ai-cell" data-ai-line="' + line + '">' +
+          '<span class="ai-lab">' + lab + '</span>' +
+          '<span class="ai-val ' + (cls || '') + '">' + val + (unit ? '<small>' + unit + '</small>' : '') + '</span>' +
+          '</div>';
+      }
+
+      function aiCardHtml(m) {
+        var outRate = ratio(m.outAi, m.out);
+        var innRate = ratio(m.innAi, m.inn);
+        var totalRate = ratio(m.outAi + m.innAi, m.total);
+        return '<article class="ai-card" data-ai-date="' + m.date + '">' +
+          '<div class="ai-l1"><span class="ai-date">' + mdDate(m.date) + '<i>' + weekOf(m.date) + '</i></span>' +
+          '<span class="ai-go">查看当日通话 ›</span></div>' +
+          '<div class="ai-metrics">' +
+          aiCell('总通话数', num(m.total), '通', '', 'all') +
+          aiCell('内线通话数', num(m.inn), '通', 'is-inn', 'inbound') +
+          aiCell('外线通话数', num(m.out), '通', 'is-out', 'outbound') +
+          aiCell('总AI处理率', totalRate.toFixed(1), '%', 'is-ai', 'all') +
+          aiCell('内线AI处理率', innRate.toFixed(1), '%', 'is-inn', 'inbound') +
+          aiCell('外线AI处理率', outRate.toFixed(1), '%', 'is-out', 'outbound') +
+          '</div>' +
+          '</article>';
+      }
+
+      function renderAiSummary() {
+        var items = aiFeed.ui.items;
+        var sum = { total: 0, out: 0, outAi: 0, inn: 0, innAi: 0 };
+        items.forEach(function (m) {
+          sum.total += m.total; sum.out += m.out; sum.outAi += m.outAi;
+          sum.inn += m.inn; sum.innAi += m.innAi;
+        });
+        var rate = ratio(sum.outAi + sum.innAi, sum.total);
+        document.getElementById('ai-summary').innerHTML =
+          '<div class="ai-sum">' +
+          '<div class="ai-sum-main"><b>' + rate.toFixed(2) + '</b><em>%</em><p>总 AI 处理率（' + items.length + ' 天汇总）</p></div>' +
+          '<div class="ai-sum-grid">' +
+          '<div class="ai-sum-cell"><span>总通话数</span><b>' + num(sum.total) + '</b></div>' +
+          '<div class="ai-sum-cell"><span>内线通话数</span><b>' + num(sum.inn) + '</b></div>' +
+          '<div class="ai-sum-cell"><span>外线通话数</span><b>' + num(sum.out) + '</b></div>' +
+          '<div class="ai-sum-cell"><span>总AI处理率</span><b>' + rate.toFixed(1) + '%</b></div>' +
+          '<div class="ai-sum-cell"><span>内线AI处理率</span><b>' + ratio(sum.innAi, sum.inn).toFixed(1) + '%</b></div>' +
+          '<div class="ai-sum-cell"><span>外线AI处理率</span><b>' + ratio(sum.outAi, sum.out).toFixed(1) + '%</b></div>' +
+          '</div></div>';
+        document.getElementById('ai-sub').textContent = mdDate(state.ai.from) + ' ~ ' + mdDate(state.ai.to) + ' 每日处理率';
+        document.getElementById('ai-count').textContent = items.length + ' 天';
+      }
+
+      function syncAiChips() {
+        var keys = ['yesterday', '7d', '30d'];
+        var s = state.ai;
+        document.getElementById('ai-range-chips').innerHTML = keys.map(function (k) {
+          var r = rangeOf(k);
+          var on = r.from === s.from && r.to === s.to;
+          return '<button type="button" class="chip' + (on ? ' is-on' : '') + '" data-ai-range="' + k + '">' + PERIOD_LABEL[k] + '</button>';
+        }).join('') + '<button type="button" class="chip' + (keys.every(function (k) { var r = rangeOf(k); return !(r.from === s.from && r.to === s.to); }) ? ' is-on' : '') + '" data-ai-range="custom">自定义</button>';
+      }
+
+      function aiRefresh() {
+        aiFeed.refresh();
+        renderAiSummary();
+        document.getElementById('ai-date-text') && (document.getElementById('ai-date-text').textContent = '');
+      }
+
+      function openAi() {
+        var r = rangeOf(currentPeriod());
+        state.ai = { from: r.from, to: r.to };
+        syncAiChips();
+        aiRefresh();
+        openView('view-ai');
+        document.getElementById('ai-scroll').scrollTop = 0;
+      }
+
+      /* 每日处理率 → 该日期通话记录 */
+      document.getElementById('ai-list').addEventListener('click', function (e) {
+        var card = e.target.closest('[data-ai-date]');
+        if (!card) return;
+        var cell = e.target.closest('[data-ai-line]');
+        var tab = cell ? cell.getAttribute('data-ai-line') : 'all';
+        openCall({ date: card.getAttribute('data-ai-date'), tab: tab });
+      });
+
+      document.getElementById('ai-range-chips').addEventListener('click', function (e) {
+        var chip = e.target.closest('[data-ai-range]');
+        if (!chip) return;
+        var key = chip.getAttribute('data-ai-range');
+        if (key === 'custom') {
+          openDateSheet('ai');
+          return;
+        }
+        var r = rangeOf(key);
+        state.ai = { from: r.from, to: r.to };
+        syncAiChips();
+        aiRefresh();
+      });
+
+      /* ---------------- 9. 工单列表页 ---------------- */
+      var orderFeed = createFeed({
+        listId: 'order-list',
+        footId: 'order-foot',
+        scrollId: 'order-scroll',
+        empty: '暂无符合条件的工单',
+        card: orderCardHtml,
+        filter: function () { return filterOrders(); }
+      });
+
+      function filterOrders() {
+        var s = state.order;
+        return orders.filter(function (o) {
+          if (!inRange(o.date, s)) return false;
+          if (s.type !== 'all' && o.type !== s.type) return false;
+          if (s.status !== 'all' && o.status !== s.status) return false;
+          if (s.overtime !== 'all' && o.overtime !== s.overtime) return false;
+          if (s.person && o.handler.indexOf(s.person) < 0) return false;
+          if (s.keyword && o.detail.indexOf(s.keyword) < 0) return false;
+          return true;
+        });
+      }
+
+      function typeTag(t) {
+        if (t === '送物服务') return 'tag-blue';
+        if (t === '维修工单') return 'tag-amber';
+        if (t === '清扫服务') return 'tag-teal';
+        if (t === '一键吐槽') return 'tag-red';
+        return 'tag-gray';
+      }
+
+      function orderCardHtml(o) {
+        return '<article class="rec-card is-drill" data-order-id="' + o.id + '">' +
+          '<div class="rec-l1">' +
+          '<span class="rec-time">' + mdDate(o.date) + ' ' + o.time + '</span>' +
+          '<span class="spacer"></span>' +
+          '<span class="tag ' + typeTag(o.type) + '">' + o.type + '</span>' +
+          '<span class="tag ' + (o.overtime === '已超时' ? 'tag-red' : 'tag-green') + '">' + o.overtime + '</span>' +
+          '</div>' +
+          '<div class="rec-l2">' +
+          '<span class="rec-room">' + o.room + '</span>' +
+          '<span class="spacer"></span>' +
+          '<span class="rec-room">处理人 ' + o.handler + '</span>' +
+          '</div>' +
+          '<div class="rec-l3">' +
+          '<span class="rec-text">' + o.detail + '</span>' +
+          '<span class="rec-go">详情 ›</span>' +
+          '</div>' +
+          '</article>';
+      }
+
+      function renderOrderMeta() {
+        var s = state.order;
+        var n = orderFeed.ui.items.length;
+        document.getElementById('order-sub').textContent =
+          mdDate(s.from) + ' ~ ' + mdDate(s.to) + ' · 共 ' + num(n) + ' 单';
+        document.getElementById('order-count').textContent = num(n) + ' 单';
+        document.getElementById('order-date-text').textContent = mdDate(s.from) + ' ~ ' + mdDate(s.to);
+      }
+
+      function renderOrderActive() {
+        var s = state.order;
+        var parts = [];
+        if (s.type !== 'all') parts.push(s.type);
+        if (s.status !== 'all') parts.push(s.status);
+        if (s.overtime !== 'all') parts.push(s.overtime);
+        if (s.person) parts.push('处理人 ' + s.person);
+        if (s.keyword) parts.push('含「' + s.keyword + '」');
+        var hasFilter = s.type !== 'all' || s.status !== 'all' || s.overtime !== 'all' || !!s.person || !!s.keyword;
+        var html = '<span>筛选：<b>' + (parts.length ? parts.join(' · ') : '全部工单') + '</b></span>';
+        if (hasFilter) html += '<button type="button" class="link-reset" id="order-reset">重置</button>';
+        document.getElementById('order-active').innerHTML = html;
+        var reset = document.getElementById('order-reset');
+        if (reset) reset.addEventListener('click', function () { resetOrderState(); syncOrderFilters(); orderRefresh(); });
+
+        var badge = document.getElementById('order-filter-badge');
+        var count = (s.status !== 'all' ? 1 : 0) + (s.overtime !== 'all' ? 1 : 0) + (s.person ? 1 : 0) + (s.keyword ? 1 : 0);
+        badge.style.display = count ? 'grid' : 'none';
+        badge.textContent = count;
+      }
+
+      function syncOrderFilters() {
+        var s = state.order;
+        document.getElementById('order-type-chips').innerHTML = ORDER_TABS.map(function (t) {
+          var key = t === '全部' ? 'all' : t;
+          return '<button type="button" class="chip' + (s.type === key ? ' is-on' : '') + '" data-otype="' + key + '">' + t + '</button>';
+        }).join('');
+        document.getElementById('order-date-text').textContent = mdDate(s.from) + ' ~ ' + mdDate(s.to);
+      }
+
+      function orderRefresh() {
+        orderFeed.refresh();
+        renderOrderMeta();
+        renderOrderActive();
+      }
+
+      function resetOrderState(opts) {
+        var r = rangeOf(currentPeriod());
+        state.order = {
+          type: (opts && opts.type) || 'all',
+          status: (opts && opts.status) || 'all',
+          overtime: (opts && opts.overtime) || 'all',
+          person: '',
+          keyword: (opts && opts.keyword) || '',
+          from: r.from,
+          to: r.to
+        };
+      }
+
+      function openOrder(opts) {
+        resetOrderState(opts);
+        syncOrderFilters();
+        orderRefresh();
+        openView('view-order');
+        document.getElementById('order-scroll').scrollTop = 0;
+      }
+
+      document.getElementById('order-type-chips').addEventListener('click', function (e) {
+        var chip = e.target.closest('[data-otype]');
+        if (!chip) return;
+        state.order.type = chip.getAttribute('data-otype');
+        syncOrderFilters();
+        orderRefresh();
+      });
+
+      document.getElementById('order-list').addEventListener('click', function (e) {
+        var card = e.target.closest('[data-order-id]');
+        if (card) openOrderDetail(card.getAttribute('data-order-id'));
+      });
+
+      document.getElementById('order-filter-btn').addEventListener('click', function () { openOrderSheet(); });
+      document.getElementById('order-date-btn').addEventListener('click', function () { openDateSheet('order'); });
+
+      /* ---------------- 10. 工单详情 ---------------- */
+      function timeOffset(dateStr, timeStr, minOffset, sec) {
+        var p = dateStr.split('-'), t = timeStr.split(':');
+        var d = new Date(+p[0], +p[1] - 1, +p[2], +t[0], +t[1] + minOffset, sec || 0);
+        return ymd(d) + ' ' + pad2(d.getHours()) + ':' + pad2(d.getMinutes()) + ':' + pad2(d.getSeconds());
+      }
+
+      function openOrderDetail(id) {
+        var o = null;
+        orders.forEach(function (x) { if (x.id === id) o = x; });
+        if (!o) return;
+
+        var body = document.getElementById('order-detail-body');
+        document.getElementById('order-detail-sub').textContent = o.id + ' · ' + o.date + ' ' + o.time;
+        document.getElementById('order-detail-tag').textContent = o.type;
+
+        var createdText = timeOffset(o.date, o.time, 0, 33);
+        var startText = timeOffset(o.date, o.time, 1, 41);
+        var doneMin = Math.max(6, Math.round(o.duration / 2));
+        var doneText = timeOffset(o.date, o.time, doneMin, 17);
+
+        var itemLine = o.itemName
+          ? '消息内容 × ' + o.qty + ' ' + (WO_UNIT[o.itemName] || '份') + o.itemName + '<br>订单数量 × ' + o.qty
+          : '—';
+
+        body.innerHTML =
+          '<div class="space-y-2.5">' +
+
+          '<div class="d-card">' +
+          '<div class="d-title"><span class="bar"></span>工单内容</div>' +
+          '<div class="player" data-duration="' + o.duration + '">' +
+          '<button type="button" class="player-play" aria-label="播放录音">' + ICON_PLAY + '</button>' +
+          '<div class="player-track"><div class="player-fill"></div></div>' +
+          '<span class="player-time">0:00 / ' + fmtDur(o.duration) + '</span>' +
+          '</div>' +
+          kv('详情', o.detail) +
+          kv('送物数量', o.qty ? String(o.qty) : '—', o.qty ? '' : 'muted') +
+          kv('物品清单', itemLine, o.itemName ? '' : 'muted') +
+          '</div>' +
+
+          '<div class="d-card">' +
+          '<div class="d-title"><span class="bar"></span>工单信息' +
+          '<span class="right"><span class="tag tag-amber">' + o.priority + '</span>' +
+          '<span class="tag tag-green">' + o.status + '</span></span></div>' +
+          kv('工单源', o.source) +
+          kv('创建类型', o.createType) +
+          kv('创建时间', createdText) +
+          kv('开始时间', startText) +
+          kv('到期时间', ymd(shift(new Date(o.date.replace(/-/g, '/')), 1)) + ' ' + o.time + ':33') +
+          kv('位置信息', o.room) +
+          kv('负责人', o.handler) +
+          kv('工单类型', o.type) +
+          '</div>' +
+
+          '<div class="d-card">' +
+          '<div class="d-title"><span class="bar"></span>工单历史记录' +
+          '<span class="right"><span class="tag tag-outline">处理人留痕</span></span></div>' +
+          '<div class="tl" id="wo-history">' +
+          '<div class="tl-item"><span class="tl-dot"></span><div class="tl-head"><span class="tl-name">已完成</span>' +
+          '<span class="tl-time">' + doneText + '</span></div>' +
+          '<div class="tl-sub">操作人：前台2 · 处理结果：' + o.detail + '</div></div>' +
+          '<div class="tl-item"><span class="tl-dot gray"></span><div class="tl-head"><span class="tl-name">待处理</span>' +
+          '<span class="tl-time">' + createdText + '</span></div>' +
+          '<div class="tl-sub">创建人：' + o.handler + ' · 工单已创建</div></div>' +
+          '</div>' +
+          '</div>' +
+
+          '</div>';
+
+        bindPlayers(body);
+        openView('view-order-detail');
+        body.scrollTop = 0;
+      }
+
+      /* ---------------- 11. 底部弹层 ---------------- */
+      var sheetTemp = null;
+      var sheetConfirm = null;
+      var sheetReset = null;
+
+      function openSheet(title, html, onReset, onConfirm) {
+        document.getElementById('sheet-title').textContent = title;
+        document.getElementById('sheet-body').innerHTML = html;
+        sheetReset = onReset || null;
+        sheetConfirm = onConfirm || null;
+        document.getElementById('sheet-mask').classList.add('is-open');
+        document.getElementById('sheet-panel').classList.add('is-open');
+      }
+      function closeSheet() {
+        document.getElementById('sheet-mask').classList.remove('is-open');
+        document.getElementById('sheet-panel').classList.remove('is-open');
+      }
+      document.getElementById('sheet-mask').addEventListener('click', closeSheet);
+      document.getElementById('sheet-close').addEventListener('click', closeSheet);
+      document.getElementById('sheet-ok').addEventListener('click', function () {
+        if (sheetConfirm) sheetConfirm();
+      });
+      document.getElementById('sheet-reset').addEventListener('click', function () {
+        if (sheetReset) sheetReset(); else closeSheet();
+      });
+
+      function chipGroup(title, key, values, current) {
+        var cur = current === 'all' ? '全部' : current;
+        return '<div class="sheet-group"><h4>' + title + '</h4>' +
+          '<div class="sheet-chips" data-key="' + key + '">' +
+          values.map(function (v) {
+            return '<button type="button" class="chip' + (v === cur ? ' is-on' : '') + '" data-val="' + v + '">' + v + '</button>';
+          }).join('') +
+          '</div></div>';
+      }
+
+      document.getElementById('sheet-body').addEventListener('click', function (e) {
+        var quick = e.target.closest('[data-quick]');
+        if (quick) {
+          var r = rangeOf(quick.getAttribute('data-quick'));
+          document.getElementById('sheet-from').value = r.from;
+          document.getElementById('sheet-to').value = r.to;
+          Array.prototype.forEach.call(document.querySelectorAll('#sheet-body [data-quick]'), function (c) {
+            c.classList.remove('is-on');
+          });
+          quick.classList.add('is-on');
+          return;
+        }
+        var chip = e.target.closest('.chip');
+        if (!chip) return;
+        var wrap = chip.parentElement;
+        var key = wrap.getAttribute('data-key');
+        if (!key) return;
+        Array.prototype.forEach.call(wrap.querySelectorAll('.chip'), function (c) { c.classList.remove('is-on'); });
+        chip.classList.add('is-on');
+        sheetTemp[key] = chip.getAttribute('data-val') === '全部' ? 'all' : chip.getAttribute('data-val');
+      });
+
+      function dateSheetHtml(from, to) {
+        var keys = ['yesterday', '7d', '30d'];
+        return '<div class="sheet-group"><h4>快捷时段</h4><div class="sheet-chips">' +
+          keys.map(function (k) {
+            var r = rangeOf(k);
+            var on = r.from === from && r.to === to;
+            return '<button type="button" class="chip' + (on ? ' is-on' : '') + '" data-quick="' + k + '">' + PERIOD_LABEL[k] + '</button>';
+          }).join('') + '</div></div>' +
+          '<div class="sheet-group"><h4>自定义日期时段</h4><div class="sheet-dates">' +
+          '<input type="date" id="sheet-from" value="' + from + '" min="2026-10-07" max="2026-11-05">' +
+          '<em>至</em>' +
+          '<input type="date" id="sheet-to" value="' + to + '" min="2026-10-07" max="2026-11-05">' +
+          '</div></div>';
+      }
+
+      function openDateSheet(kind) {
+        var s = kind === 'ai' ? state.ai : kind === 'call' ? state.call : state.order;
+        openSheet('日期时段', dateSheetHtml(s.from, s.to), null, function () {
+          var f = document.getElementById('sheet-from').value;
+          var t = document.getElementById('sheet-to').value;
+          if (!f || !t) { toast('请选择完整的起止日期'); return; }
+          if (f > t) { var tmp = f; f = t; t = tmp; }
+          if (kind === 'ai') {
+            state.ai = { from: f, to: t };
+            syncAiChips();
+            aiRefresh();
+          } else if (kind === 'call') {
+            state.call.from = f;
+            state.call.to = t;
+            syncCallFilters();
+            callRefresh();
+          } else {
+            state.order.from = f;
+            state.order.to = t;
+            syncOrderFilters();
+            orderRefresh();
+          }
+          closeSheet();
+        });
+      }
+
+      function openOrderSheet() {
+        var s = state.order;
+        sheetTemp = { status: s.status, overtime: s.overtime, type: s.type };
+        var html =
+          chipGroup('工单状态', 'status', ['全部', '待处理', '处理中', '已完成'], s.status) +
+          chipGroup('工单类型', 'type', ['全部', '送物服务', '清扫服务', '维修工单', '一键吐槽'], s.type) +
+          chipGroup('是否超时', 'overtime', ['全部', '已超时', '未超时'], s.overtime) +
+          '<div class="sheet-group"><h4>处理人（模糊筛选）</h4>' +
+          '<input class="sheet-input" id="sheet-person" value="' + s.person + '" placeholder="输入姓名，如 服务员1"></div>' +
+          '<div class="sheet-group"><h4>日期时段</h4><div class="sheet-dates">' +
+          '<input type="date" id="sheet-from" value="' + s.from + '" min="2026-10-07" max="2026-11-05">' +
+          '<em>至</em>' +
+          '<input type="date" id="sheet-to" value="' + s.to + '" min="2026-10-07" max="2026-11-05"></div></div>';
+
+        openSheet('工单筛选', html, function () {
+          state.order = {
+            type: 'all', status: 'all', overtime: 'all', person: '', keyword: '',
+            from: rangeOf('30d').from, to: rangeOf('30d').to
+          };
+          syncOrderFilters();
+          orderRefresh();
+          closeSheet();
+        }, function () {
+          var f = document.getElementById('sheet-from').value;
+          var t = document.getElementById('sheet-to').value;
+          if (!f || !t) { toast('请选择完整的起止日期'); return; }
+          if (f > t) { var tmp = f; f = t; t = tmp; }
+          state.order.status = sheetTemp.status;
+          state.order.type = sheetTemp.type;
+          state.order.overtime = sheetTemp.overtime;
+          state.order.person = (document.getElementById('sheet-person').value || '').trim();
+          state.order.from = f;
+          state.order.to = t;
+          syncOrderFilters();
+          orderRefresh();
+          closeSheet();
+        });
+      }
+
+      /* ---------------- 12. 概览页下钻入口 ---------------- */
+      function bindDrillEntrances() {
+        var totalCard = document.getElementById('card-total-calls');
+        if (totalCard) totalCard.addEventListener('click', function () { openCall({ tab: 'all' }); });
+
+        var aiCard = document.getElementById('card-ai-rate');
+        if (aiCard) aiCard.addEventListener('click', function () { openAi(); });
+
+        ['outbound', 'inbound'].forEach(function (line) {
+          var el = document.getElementById('row-' + line);
+          if (el) el.addEventListener('click', function () {
+            openCall({ tab: line === 'outbound' ? 'outbound' : 'inbound' });
+          });
+        });
+
+        var dist = document.getElementById('call-distribution-list');
+        if (dist) dist.addEventListener('click', function (e) {
+          var row = e.target.closest('[data-dist-index]');
+          if (!row) return;
+          openCall({ cat: DIST_CAT[+row.getAttribute('data-dist-index')] || 'all' });
+        });
+
+        var wo = document.getElementById('workorder-grid');
+        if (wo) wo.addEventListener('click', function (e) {
+          var card = e.target.closest('[data-wo-index]');
+          if (!card) return;
+          var opts = WO_MAP[+card.getAttribute('data-wo-index')];
+          if (opts) openOrder(opts);
+        });
+
+        var rank = document.getElementById('rank-list');
+        if (rank) rank.addEventListener('click', function (e) {
+          var row = e.target.closest('[data-rank-name]');
+          if (!row) return;
+          drillRank(row.getAttribute('data-rank-dim'), row.getAttribute('data-rank-name'));
+        });
+
+        var rankDrill = document.getElementById('rank-drill');
+        if (rankDrill) rankDrill.addEventListener('click', function () {
+          var el = rankDrill.querySelector('[data-rank-name]');
+          if (!el) return;
+          drillRank(el.getAttribute('data-rank-dim'), el.getAttribute('data-rank-name'));
+        });
+      }
+
+      function drillRank(dim, name) {
+        if (dim === 'consult') {
+          openCall({ sum: RANK_SUM[name] || name });
+        } else if (dim === 'delivery') {
+          openOrder({ type: '送物服务', keyword: name === '塑料袋子' ? '塑料袋' : name });
+        } else if (dim === 'repair') {
+          openOrder({ type: '维修工单' });
+        } else if (dim === 'complaint') {
+          openCall({ cat: '投诉类' });
+        }
+      }
+
+      /* ---------------- 13. 输入与滚动绑定 ---------------- */
+      var roomTimer = null;
+      document.getElementById('call-room').addEventListener('input', function (e) {
+        var v = (e.target.value || '').trim();
+        clearTimeout(roomTimer);
+        roomTimer = setTimeout(function () {
+          state.call.room = v;
+          callRefresh();
+        }, 260);
+      });
+      document.getElementById('call-date-btn').addEventListener('click', function () { openDateSheet('call'); });
+
+      document.getElementById('call-tabs').addEventListener('click', function (e) {
+        var btn = e.target.closest('[data-tab]');
+        if (!btn) return;
+        state.call.tab = btn.getAttribute('data-tab');
+        syncCallFilters();
+        callRefresh();
+      });
+
+      document.getElementById('call-cat-chips').addEventListener('click', function (e) {
+        var chip = e.target.closest('[data-cat]');
+        if (!chip) return;
+        state.call.cat = chip.getAttribute('data-cat');
+        syncCallFilters();
+        callRefresh();
+      });
+
+      document.getElementById('call-sum-chips').addEventListener('click', function (e) {
+        var chip = e.target.closest('[data-sum]');
+        if (!chip) return;
+        state.call.sum = chip.getAttribute('data-sum');
+        syncCallFilters();
+        callRefresh();
+      });
+
+      ['call', 'ai', 'order'].forEach(function (key) {
+        var el = document.getElementById(key + '-scroll');
+        var feed = key === 'call' ? callFeed : key === 'ai' ? aiFeed : orderFeed;
+        el.addEventListener('scroll', function () {
+          if (el.scrollTop + el.clientHeight >= el.scrollHeight - 80) feed.more();
+        }, { passive: true });
+      });
+
+      /* ---------------- 14. 启动 ---------------- */
+      bindDrillEntrances();
+    })();
+  </script>
+</body>
+</html>

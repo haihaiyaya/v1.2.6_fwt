@@ -1,0 +1,2876 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" href="data:,">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>中远宾馆 · 房务中心总台 · 话务台</title>
+<style>
+/* ============================================================
+   中远宾馆 · 房务中心数智通讯系统 —— 话务台整合版
+   说明：左侧菜单树沿用“房务中心总台”框架（中远宾馆），
+   第一个菜单为“话务台”，右侧主区为话务台全部功能；
+   顶部为头部话务条（左：话务台标识+面包屑+坐席状态；中：核心通话信息；
+   右：坐席信息卡+签入/签出），底部为系统状态栏。
+   ============================================================ */
+:root {
+  --primary: #1a73e8;
+  --primary-hover: #1557b0;
+  --primary-light: #e8f0fe;
+  --answer: #f59e0b;
+  --answer-hover: #d97706;
+  --hangup: #dc2626;
+  --hangup-hover: #b91c1c;
+  --call: #16a34a;
+  --call-hover: #15803d;
+  --hold: #64748b;
+  --bg: #f5f6f8;
+  --card: #ffffff;
+  --border: #e5e7eb;
+  --text: #1e293b;
+  --text-secondary: #64748b;
+  --text-muted: #94a3b8;
+  --success: #16a34a;
+  --warning: #f59e0b;
+  --danger: #dc2626;
+  --sidebar-bg: #ffffff;
+  --sidebar-text: #3a3f4b;
+  --sidebar-active-bg: #eef0f3;
+  --sidebar-hover: #f5f6f8;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", -apple-system, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 13px;
+  overflow: hidden;
+}
+
+/* ===== 整体布局：左侧菜单 + 右侧主区 ===== */
+.app-layout { display: flex; height: 100vh; width: 100%; }
+
+/* ---- 左侧菜单（图片2框架） ---- */
+.sidebar {
+  width: 240px; flex-shrink: 0; background: var(--sidebar-bg);
+  border-right: 1px solid var(--border);
+  display: flex; flex-direction: column;
+}
+.sidebar-top {
+  display: flex; align-items: center; gap: 10px;
+  padding: 16px 16px 12px; border-bottom: 1px solid #f1f2f4;
+}
+.org-avatar {
+  width: 44px; height: 44px; border-radius: 50%; flex-shrink: 0;
+  background: #dcebfb; color: var(--primary);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px; font-weight: 700;
+}
+.org-info { min-width: 0; }
+.org-name { font-size: 15px; font-weight: 600; color: var(--text); }
+.org-sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+
+.sidebar-nav { flex: 1; overflow-y: auto; padding: 12px 0; }
+.menu-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 16px; margin: 2px 12px;
+  border-radius: 8px; cursor: pointer; color: var(--sidebar-text);
+  font-size: 14px; transition: background 0.15s, color 0.15s;
+  user-select: none;
+}
+.menu-item:hover { background: var(--sidebar-hover); }
+.menu-item.active { background: var(--sidebar-active-bg); color: var(--primary); font-weight: 600; }
+.menu-item .menu-icon {
+  width: 20px; height: 20px; flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+  color: #94a3b8;
+}
+.menu-item.active .menu-icon { color: var(--primary); }
+.menu-item .menu-text { flex: 1; }
+.menu-item .menu-badge {
+  background: var(--primary); color: #fff; font-size: 11px; padding: 0 7px;
+  border-radius: 10px; font-weight: 500; min-width: 18px; text-align: center;
+}
+
+.sidebar-bottom {
+  padding: 12px 16px; border-top: 1px solid #f1f2f4;
+  display: flex; align-items: center; gap: 10px;
+}
+.sb-user-avatar {
+  width: 32px; height: 32px; border-radius: 50%; background: var(--primary-light);
+  color: var(--primary); display: flex; align-items: center; justify-content: center;
+  font-size: 14px; font-weight: 600; flex-shrink: 0;
+}
+.sb-user-name { font-size: 13px; color: var(--text); font-weight: 500; flex: 1; }
+.sb-settings {
+  width: 26px; height: 26px; display: flex; align-items: center; justify-content: center;
+  color: var(--text-muted); cursor: pointer; border-radius: 6px;
+}
+.sb-settings:hover { background: var(--sidebar-hover); color: var(--text); }
+
+/* ---- 右侧主区 ---- */
+.main { flex: 1; min-width: 0; display: flex; flex-direction: column; background: var(--bg); }
+.main-topbar {
+  height: 56px; background: #fff; border-bottom: 1px solid var(--border); flex-shrink: 0;
+  display: flex; align-items: center; justify-content: space-between; padding: 0 20px;
+}
+.main-breadcrumb { font-size: 13px; color: var(--text-secondary); }
+.main-breadcrumb span { color: var(--text); }
+.main-topbar-right { display: flex; align-items: center; gap: 12px; }
+.console-agent-info { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--text-secondary); }
+.console-agent-info .agent-id {
+  background: var(--primary-light); color: var(--primary); padding: 2px 10px;
+  border-radius: 10px; font-weight: 600; font-size: 12px;
+}
+.console-status-badge {
+  display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px;
+  border-radius: 12px; font-size: 12px; font-weight: 500;
+}
+.status-idle { background: #f0fdf4; color: #16a34a; }
+.status-ringing { background: #fffbeb; color: #d97706; animation: pulse-badge 1s infinite; }
+.status-incall { background: #eff6ff; color: #1a73e8; }
+.status-hold { background: #fef2f2; color: #dc2626; }
+.status-dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+@keyframes pulse-badge { 0%,100%{opacity:1} 50%{opacity:0.5} }
+
+/* ===== 页面切换 ===== */
+.page { display: none; flex: 1; min-height: 0; }
+.page.active { display: flex; flex-direction: column; }
+
+/* ===== 话务台网格（已按主区尺寸适配） ===== */
+.console-grid {
+  display: grid;
+  grid-template-columns: minmax(250px, 290px) 1fr minmax(330px, 370px);
+  grid-template-rows: minmax(170px, 1.7fr) minmax(110px, 0.6fr) minmax(330px, 1.3fr);
+  gap: 12px; padding: 12px; flex: 1; min-height: 0;
+}
+.call-history-panel { grid-row: span 2; }
+
+.panel {
+  background: #fff; border-radius: 8px; border: 1px solid var(--border);
+  display: flex; flex-direction: column; overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+}
+.panel-header {
+  padding: 10px 14px; font-size: 14px; font-weight: 600; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  background: linear-gradient(to bottom, #f8fafc, #f1f5f9); color: #334155;
+}
+.panel-header .count-badge {
+  background: var(--primary); color: #fff; font-size: 11px; padding: 1px 7px;
+  border-radius: 8px; font-weight: 500;
+}
+.panel-body { flex: 1; overflow-y: auto; padding: 8px; }
+
+/* 呼叫队列 & 驻留队列 */
+.queue-item {
+  padding: 6px 8px 6px 26px; border-radius: 5px; margin-bottom: 4px; cursor: pointer;
+  border: 1px solid var(--border); transition: all 0.15s; position: relative;
+}
+.queue-item:hover { border-color: var(--primary); background: var(--primary-light); }
+.queue-item.incoming {
+  border-color: var(--answer); background: #fffbeb; animation: queue-pulse 1.5s infinite;
+}
+@keyframes queue-pulse { 0%,100%{box-shadow:0 0 0 0 rgba(245,158,11,0.3)} 50%{box-shadow:0 0 0 4px rgba(245,158,11,0)} }
+.queue-item .qi-number {
+  position: absolute; left: 6px; top: 6px; width: 16px; height: 16px;
+  background: #e2e8f0; color: #475569; border-radius: 3px; font-size: 10px;
+  font-weight: 700; display: flex; align-items: center; justify-content: center;
+}
+.queue-item.incoming .qi-number { background: #f59e0b; color: #fff; }
+.queue-item .qi-top { display: flex; justify-content: space-between; align-items: center; }
+.queue-item .qi-name { font-weight: 600; font-size: 12px; }
+.queue-item .qi-type { font-size: 10px; padding: 1px 5px; border-radius: 3px; font-weight: 500; }
+.type-internal { background: #e0f2fe; color: #0369a1; }
+.type-external { background: #fce7f3; color: #be185d; }
+.type-room { background: #dcfce7; color: #15803d; }
+.queue-item .qi-info { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
+.queue-item .qi-wait { font-size: 10px; color: var(--text-muted); margin-top: 1px; }
+.queue-empty { text-align: center; padding: 16px 8px; color: var(--text-muted); font-size: 12px; }
+.queue-panel .panel-header { padding: 7px 12px; font-size: 13px; }
+.queue-panel .panel-body { padding: 6px; }
+
+/* 当前连接 */
+.current-connection { grid-row: span 2; }
+.cc-idle {
+  flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  color: var(--text-muted);
+}
+.cc-idle-icon {
+  width: 72px; height: 72px; border-radius: 50%; background: #f1f5f9;
+  display: flex; align-items: center; justify-content: center; margin-bottom: 16px;
+}
+.cc-idle-text { font-size: 16px; font-weight: 500; }
+.cc-idle-sub { font-size: 12px; margin-top: 6px; }
+.cc-active { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+.cc-caller-card {
+  padding: 10px 16px; background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+  color: #fff;
+}
+.cc-caller-top { display: flex; justify-content: space-between; align-items: center; }
+.cc-caller-name { font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+.cc-caller-tag {
+  font-size: 11px; padding: 1px 8px; border-radius: 10px; background: rgba(255,255,255,0.15);
+  font-weight: 400;
+}
+.cc-caller-number { font-size: 13px; color: #94a3b8; }
+.cc-caller-meta { display: flex; gap: 14px; margin-top: 6px; font-size: 12px; color: #cbd5e1; flex-wrap: wrap; }
+.cc-caller-meta .meta-item { display: flex; align-items: center; gap: 4px; }
+.cc-caller-meta .meta-label { color: #64748b; font-size: 11px; }
+.cc-caller-meta .meta-value { color: #fff; font-size: 12px; font-weight: 500; }
+/* 全局 AI 接听模式通栏（话务全局设置，置于话务台页顶部） */
+.ai-global-bar {
+  display: flex; align-items: center; justify-content: flex-end; gap: 12px;
+  padding: 8px 14px; margin-bottom: 10px;
+  background: linear-gradient(135deg, #eef2ff, #ecfeff);
+  border: 1px solid #e0e7ff; border-radius: 8px;
+}
+.aig-btns { display: flex; gap: 8px; flex-shrink: 0; }
+.aig-btns .aimode-btn { flex: 0 0 auto; min-width: 130px; }
+.aimode-btn {
+  display: flex; align-items: center; gap: 6px;
+  border: none; border-radius: 8px; padding: 8px 12px; cursor: pointer;
+  color: #fff; font-size: 12px; font-weight: 600; transition: all .15s; opacity: .55;
+}
+.aimode-btn.internal { background: linear-gradient(135deg, #4338ca, #3730a3); }
+.aimode-btn.external { background: linear-gradient(135deg, #38bdf8, #0ea5e9); }
+.aimode-btn.on { opacity: 1; box-shadow: 0 0 0 2px rgba(255,255,255,.5); }
+.aimode-btn:hover { opacity: .85; transform: translateY(-1px); }
+.aimode-btn .am-icon { flex-shrink: 0; display: inline-flex; }
+.aimode-btn .am-text { flex: 1; text-align: center; white-space: nowrap; }
+.aimode-btn .am-set { flex-shrink: 0; opacity: .85; display: inline-flex; }
+.cc-timer {
+  font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums;
+  background: rgba(255,255,255,0.1); padding: 2px 10px; border-radius: 6px;
+}
+.cc-caller-tag.conf-tag { background: #7c3aed; }
+.cc-parties { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.party-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  background: rgba(255,255,255,0.12); color: #fff; font-size: 11px;
+  padding: 3px 8px; border-radius: 12px; font-weight: 500;
+}
+.party-chip.party-host { background: rgba(255,255,255,0.2); font-weight: 600; }
+.party-remove {
+  margin-left: 4px; cursor: pointer; opacity: 0.6; font-size: 10px;
+  width: 14px; height: 14px; display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 50%;
+}
+.party-remove:hover { opacity: 1; background: rgba(255,255,255,0.2); }
+.transfer-banner { margin-top: 8px; padding: 7px 12px; border-radius: 6px; font-size: 12px; display: flex; align-items: center; gap: 8px; font-weight: 500; }
+.transfer-banner.dialing { background: rgba(245,158,11,0.15); color: #fbbf24; }
+.transfer-banner.connected { background: rgba(22,163,74,0.15); color: #4ade80; }
+.tb-spinner {
+  width: 12px; height: 12px; border: 2px solid rgba(251,191,36,0.3);
+  border-top-color: #fbbf24; border-radius: 50%;
+  animation: tbSpin 0.8s linear infinite; flex-shrink: 0;
+}
+@keyframes tbSpin { to { transform: rotate(360deg); } }
+.cc-action-btn.complete-transfer { background: #16a34a; color: #fff; border-color: #16a34a; }
+.cc-action-btn.complete-transfer:hover { background: #15803d; border-color: #15803d; color: #fff; }
+.cc-action-btn.complete-transfer .action-icon { color: #fff; }
+.cc-transcript { flex: 1; overflow-y: auto; padding: 12px 16px; background: #f8fafc; }
+.transcript-line { margin-bottom: 14px; display: flex; flex-direction: column; }
+.transcript-line.guest { align-items: flex-start; }
+.transcript-line.agent { align-items: flex-end; }
+.transcript-line .ts-speaker { font-size: 11px; font-weight: 600; margin-bottom: 4px; display: flex; align-items: center; gap: 6px; }
+.transcript-line.guest .ts-speaker { color: #be185d; }
+.transcript-line.agent .ts-speaker { color: #1a73e8; }
+.transcript-line .ts-time { font-weight: 400; color: var(--text-muted); font-size: 10px; }
+.transcript-line .ts-bubble { padding: 10px 14px; border-radius: 10px; font-size: 13px; line-height: 1.6; word-break: break-word; max-width: 85%; display: inline-block; }
+.transcript-line.guest .ts-bubble { background: #fff; border: 1px solid var(--border); border-top-left-radius: 2px; }
+.transcript-line.agent .ts-bubble { background: var(--primary); color: #fff; border-top-right-radius: 2px; }
+.transcript-line .ts-typing { display: inline-flex; gap: 4px; padding: 10px 14px; }
+.transcript-line .ts-typing span { width: 6px; height: 6px; border-radius: 50%; background: var(--text-muted); animation: typing 1.2s infinite; }
+.transcript-line .ts-typing span:nth-child(2) { animation-delay: 0.2s; }
+.transcript-line .ts-typing span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes typing { 0%,60%,100%{transform:translateY(0);opacity:0.4} 30%{transform:translateY(-4px);opacity:1} }
+.cc-actions { padding: 8px 16px; border-top: 1px solid var(--border); display: flex; gap: 6px; background: #fff; }
+.cc-action-btn {
+  flex: 1; padding: 7px 4px; border-radius: 6px; border: 1px solid var(--border);
+  background: #fff; cursor: pointer; font-size: 11px; display: flex;
+  flex-direction: column; align-items: center; gap: 3px; transition: all 0.15s;
+  color: var(--text-secondary);
+}
+.cc-action-btn:hover { border-color: var(--primary); color: var(--primary); }
+.cc-action-btn.active { background: var(--primary-light); border-color: var(--primary); color: var(--primary); }
+.cc-action-btn .action-icon { font-size: 15px; }
+
+/* 通话记录 */
+.history-tabs { display: flex; gap: 0; padding: 0 12px; border-bottom: 1px solid var(--border); }
+.history-tab {
+  padding: 8px 10px; font-size: 12px; cursor: pointer; color: var(--text-secondary);
+  border-bottom: 2px solid transparent; margin-bottom: -1px;
+}
+.history-tab.active { color: var(--primary); border-bottom-color: var(--primary); font-weight: 500; }
+.history-search { padding: 8px 12px; display: flex; gap: 8px; border-bottom: 1px solid var(--border); }
+.history-search input {
+  flex: 1; padding: 6px 10px; border: 1px solid var(--border); border-radius: 4px;
+  font-size: 12px; outline: none;
+}
+.history-search input:focus { border-color: var(--primary); }
+.btn-query {
+  padding: 6px 16px; background: var(--primary); color: #fff; border: none;
+  border-radius: 4px; font-size: 12px; cursor: pointer;
+}
+.btn-query:hover { background: var(--primary-hover); }
+.history-list { flex: 1; overflow-y: auto; }
+.history-item { padding: 10px 12px; border-bottom: 1px solid #f1f5f9; cursor: pointer; transition: background 0.15s; }
+.history-item:hover { background: #f8fafc; }
+.history-item .hi-top { display: flex; justify-content: space-between; align-items: center; }
+.history-item .hi-name { font-weight: 500; font-size: 13px; }
+.history-item .hi-status { font-size: 11px; font-weight: 500; }
+.status-answered { color: var(--success); }
+.status-outbound { color: var(--primary); }
+.status-transferred { color: #8b5cf6; }
+.status-missed { color: var(--danger); }
+.history-item .hi-bottom { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+
+/* 通讯录 */
+.contacts-panel { grid-column: span 2; }
+.contacts-layout { display: flex; flex: 1; overflow: hidden; }
+.contacts-tree {
+  width: 170px; border-right: 1px solid var(--border); overflow-y: auto; padding: 8px 6px;
+  flex-shrink: 0; background: #fafbfc;
+}
+.tree-root {
+  padding: 8px 10px; font-size: 13px; font-weight: 600; color: var(--text);
+  display: flex; align-items: center; gap: 6px; cursor: pointer; border-radius: 6px; margin-bottom: 4px;
+}
+.tree-root:hover { background: #eef2f7; }
+.tree-root.active { background: var(--primary-light); color: var(--primary); }
+.tree-root .tree-icon { color: var(--primary); flex-shrink: 0; }
+.tree-dept {
+  padding: 7px 10px 7px 24px; font-size: 12px; color: var(--text-secondary);
+  cursor: pointer; border-radius: 6px; display: flex; align-items: center;
+  justify-content: space-between; transition: all 0.15s; position: relative;
+}
+.tree-dept:hover { background: #eef2f7; color: var(--text); }
+.tree-dept.active { background: var(--primary-light); color: var(--primary); font-weight: 500; }
+.tree-dept.active::before {
+  content: ''; position: absolute; left: 6px; top: 50%; transform: translateY(-50%);
+  width: 3px; height: 16px; background: var(--primary); border-radius: 2px;
+}
+.tree-dept .dept-left { display: flex; align-items: center; gap: 6px; }
+.tree-dept .dept-icon { flex-shrink: 0; opacity: 0.6; }
+.tree-dept.active .dept-icon { opacity: 1; }
+.tree-arrow { display: inline-block; width: 12px; font-size: 9px; color: var(--text-muted); cursor: pointer; text-align: center; flex-shrink: 0; }
+.tree-arrow-placeholder { display: inline-block; width: 12px; flex-shrink: 0; }
+.tree-groups { padding-left: 0; }
+.tree-group {
+  padding: 6px 10px 6px 30px; font-size: 12px; color: var(--text-muted);
+  cursor: pointer; border-radius: 6px; display: flex; align-items: center; gap: 6px; transition: all 0.15s;
+}
+.tree-group:hover { background: #eef2f7; color: var(--text); }
+.tree-group.active { background: var(--primary-light); color: var(--primary); font-weight: 500; }
+.tree-group .dept-count { font-size: 10px; background: #e2e8f0; color: var(--text-muted); padding: 1px 6px; border-radius: 8px; margin-left: auto; font-weight: 500; }
+.tree-group.active .dept-count { background: rgba(26,115,232,0.15); color: var(--primary); }
+.tree-dept .dept-count { font-size: 10px; background: #e2e8f0; color: var(--text-muted); padding: 1px 6px; border-radius: 8px; font-weight: 500; }
+.tree-dept.active .dept-count { background: rgba(26,115,232,0.15); color: var(--primary); }
+.contacts-main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+.contacts-toolbar { padding: 8px 12px; display: flex; gap: 8px; align-items: center; border-bottom: 1px solid var(--border); }
+.contacts-toolbar input {
+  flex: 1; padding: 6px 10px; border: 1px solid var(--border); border-radius: 4px;
+  font-size: 12px; outline: none;
+}
+.contacts-toolbar input:focus { border-color: var(--primary); }
+.radio-group { display: flex; gap: 12px; font-size: 12px; color: var(--text-secondary); }
+.radio-group label { cursor: pointer; display: flex; align-items: center; gap: 4px; }
+.contacts-table-wrap { flex: 1; overflow-y: auto; scrollbar-gutter: stable; }
+.contacts-table { width: 100%; border-collapse: collapse; font-size: 12px; table-layout: fixed; }
+.contacts-table th {
+  text-align: left; padding: 8px 10px; background: #f8fafc; color: var(--text-secondary);
+  font-weight: 500; border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 1;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.contacts-table th:nth-child(1), .contacts-table th:nth-child(2) { text-align: center; }
+.contacts-table td { padding: 8px 10px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+.contacts-table td .cell-text { display: inline-block; max-width: calc(100% - 24px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: middle; }
+.contacts-table .link-btn { color: var(--primary); cursor: pointer; margin-right: 6px; }
+.contacts-table .link-btn:hover { text-decoration: underline; }
+.contacts-table .num-cell { color: var(--text-muted); font-size: 12px; text-align: center; }
+.contacts-table .star-cell { text-align: center; cursor: pointer; font-size: 16px; user-select: none; }
+.contacts-table .star-on { color: #f59e0b; }
+.contacts-table .star-off { color: #cbd5e1; }
+.contacts-table .copy-icon { display: inline-block; margin-left: 6px; cursor: pointer; color: var(--text-muted); font-size: 12px; vertical-align: middle; }
+.contacts-table .copy-icon:hover { color: var(--primary); }
+.contacts-pagination {
+  padding: 8px 12px; border-top: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 12px; color: var(--text-secondary); flex-shrink: 0;
+}
+.pagination-info { color: var(--text-muted); }
+.pagination-btns { display: flex; gap: 4px; align-items: center; }
+.pagination-btns button {
+  padding: 4px 10px; border: 1px solid var(--border); background: #fff;
+  border-radius: 4px; cursor: pointer; font-size: 12px; color: var(--text-secondary);
+}
+.pagination-btns button:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); }
+.pagination-btns button:disabled { opacity: 0.4; cursor: not-allowed; }
+.pagination-btns .page-active { background: var(--primary); color: #fff; border-color: var(--primary); }
+.pagination-btns .page-jump { width: 40px; padding: 4px 6px; border: 1px solid var(--border); border-radius: 4px; font-size: 12px; text-align: center; outline: none; }
+.pagination-btns .page-jump:focus { border-color: var(--primary); }
+
+/* 拨号盘 */
+.dialpad-panel { display: flex; flex-direction: column; overflow: hidden; }
+.dial-row { display: flex; gap: 8px; padding: 8px 12px 0; align-items: stretch; }
+.dial-display {
+  flex: 1; padding: 8px 14px; font-size: 18px;
+  font-weight: 600; letter-spacing: 2px; text-align: center; min-height: 38px;
+  font-variant-numeric: tabular-nums; color: var(--text); background: #f8fafc;
+  border: 1px solid var(--border); border-radius: 6px;
+}
+.dial-call-btn {
+  width: 58px; background: var(--call); color: #fff; border: none;
+  border-radius: 6px; font-size: 14px; font-weight: 700; cursor: pointer;
+  transition: background 0.15s;
+}
+.dial-call-btn:hover { background: var(--call-hover); }
+.dialpad-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; padding: 10px 12px 6px; }
+.dial-key {
+  padding: 10px 0; text-align: center; background: var(--primary); color: #fff;
+  border-radius: 6px; font-size: 17px; font-weight: 600; cursor: pointer;
+  transition: background 0.1s; user-select: none;
+}
+.dial-key:hover { background: var(--primary-hover); }
+.dial-key:active { transform: scale(0.96); }
+.dial-key.fn { background: #475569; font-size: 13px; }
+.dial-key.fn:hover { background: #334155; }
+.dial-fn-row { display: flex; gap: 6px; padding: 0 12px 10px; }
+.dial-fn-row .dial-key { flex: 1; }
+
+/* 来话弹窗 */
+.incoming-overlay {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.4); z-index: 1000;
+  display: flex; align-items: center; justify-content: center;
+  animation: fadeIn 0.2s;
+}
+@keyframes fadeIn { from{opacity:0} to{opacity:1} }
+.incoming-modal {
+  background: #fff; border-radius: 12px; width: 400px; overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.3); animation: slideUp 0.3s;
+}
+@keyframes slideUp { from{transform:translateY(20px);opacity:0} to{transform:translateY(0);opacity:1} }
+.incoming-header { background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); padding: 24px; text-align: center; color: #fff; transition: background 0.3s; }
+.incoming-header.inc-external { background: linear-gradient(135deg, #ea580c 0%, #c2410c 100%); }
+.incoming-header.inc-staff { background: linear-gradient(135deg, #0891b2 0%, #0e7490 100%); }
+.incoming-header .ring-icon {
+  width: 64px; height: 64px; border-radius: 50%; background: rgba(255,255,255,0.2);
+  display: flex; align-items: center; justify-content: center; margin: 0 auto 12px;
+  animation: ring-shake 0.5s infinite;
+}
+@keyframes ring-shake {
+  0%,100%{transform:rotate(0)} 20%{transform:rotate(-15deg)} 40%{transform:rotate(15deg)}
+  60%{transform:rotate(-10deg)} 80%{transform:rotate(10deg)}
+}
+.incoming-header .inc-type { font-size: 13px; opacity: 0.9; margin-bottom: 4px; }
+.incoming-header .inc-name { font-size: 24px; font-weight: 700; }
+.incoming-header .inc-number { font-size: 14px; opacity: 0.85; margin-top: 4px; }
+.incoming-body { padding: 16px 24px; }
+.incoming-meta { display: flex; justify-content: space-around; text-align: center; }
+.incoming-meta .im-item .im-label { font-size: 11px; color: var(--text-muted); }
+.incoming-meta .im-item .im-value { font-size: 14px; font-weight: 600; margin-top: 2px; }
+.incoming-actions { display: flex; gap: 12px; padding: 0 24px 24px; }
+.incoming-actions button {
+  flex: 1; padding: 14px; border-radius: 8px; border: none; font-size: 15px;
+  font-weight: 700; cursor: pointer; color: #fff; transition: all 0.15s;
+}
+.btn-inc-answer { background: var(--call); }
+.btn-inc-answer:hover { background: var(--call-hover); }
+.btn-inc-decline { background: var(--hangup); }
+.btn-inc-decline:hover { background: var(--hangup-hover); }
+
+/* 转接弹窗 */
+.transfer-overlay {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.4); z-index: 1000;
+  display: flex; align-items: center; justify-content: center;
+}
+.transfer-modal { background: #fff; border-radius: 10px; width: 360px; padding: 20px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+.transfer-modal-lg { width: 440px; max-height: 80vh; display: flex; flex-direction: column; }
+.tf-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+.tf-header h3 { font-size: 16px; margin: 0; }
+.tf-close { cursor: pointer; color: var(--text-muted); font-size: 16px; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; border-radius: 4px; }
+.tf-close:hover { background: #f1f5f9; color: var(--text); }
+.tf-tabs { display: flex; gap: 0; margin-bottom: 12px; border-bottom: 2px solid var(--border); }
+.tf-tab {
+  padding: 8px 20px; font-size: 13px; font-weight: 600; cursor: pointer;
+  color: var(--text-muted); border-bottom: 2px solid transparent; margin-bottom: -2px;
+  transition: all 0.15s;
+}
+.tf-tab:hover { color: var(--text); }
+.tf-tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+.tf-current { font-size: 12px; color: var(--text-secondary); background: #f8fafc; padding: 8px 12px; border-radius: 6px; margin-bottom: 12px; }
+.tf-current-name { font-weight: 600; color: var(--text); }
+.tf-search-row { margin-bottom: 8px; }
+.tf-search { width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; outline: none; box-sizing: border-box; }
+.tf-search:focus { border-color: var(--primary); }
+.tf-contact-list { flex: 1; overflow-y: auto; border: 1px solid var(--border); border-radius: 6px; max-height: 240px; margin-bottom: 10px; }
+.tf-contact-item { padding: 8px 12px; cursor: pointer; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center; transition: background 0.1s; }
+.tf-contact-item:last-child { border-bottom: none; }
+.tf-contact-item:hover { background: #f0f7ff; }
+.tf-contact-item.selected { background: var(--primary-light); }
+.tf-contact-left { display: flex; align-items: center; gap: 8px; }
+.tf-checkbox { width: 16px; height: 16px; border: 2px solid #cbd5e1; border-radius: 4px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.15s; }
+.tf-contact-item.selected .tf-checkbox { background: var(--primary); border-color: var(--primary); }
+.tf-contact-item.selected .tf-checkbox::after { content: ''; width: 4px; height: 8px; border: solid #fff; border-width: 0 2px 2px 0; transform: rotate(45deg); margin-bottom: 2px; }
+.tf-contact-info { display: flex; flex-direction: column; }
+.tf-contact-name { font-size: 13px; font-weight: 500; color: var(--text); }
+.tf-contact-dept { font-size: 11px; color: var(--text-muted); }
+.tf-contact-num { font-size: 12px; color: var(--primary); font-weight: 600; font-variant-numeric: tabular-nums; }
+.tf-manual-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.tf-manual-label { font-size: 12px; color: var(--text-secondary); white-space: nowrap; }
+.tf-manual-input { flex: 1; padding: 7px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; outline: none; }
+.tf-manual-input:focus { border-color: var(--primary); }
+.tf-selected { font-size: 12px; color: var(--text-secondary); background: #f0fdf4; border: 1px solid #bbf7d0; padding: 6px 10px; border-radius: 6px; margin-bottom: 12px; }
+.tf-selected-name { font-weight: 600; color: #166534; margin: 0 4px; }
+.tf-selected-number { color: var(--primary); font-weight: 600; }
+.transfer-actions { display: flex; gap: 8px; }
+.transfer-actions button { flex: 1; padding: 10px; border-radius: 6px; border: none; font-size: 13px; font-weight: 600; cursor: pointer; }
+.transfer-actions button:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn-transfer-confirm { background: var(--primary); color: #fff; }
+.btn-transfer-confirm:hover:not(:disabled) { background: var(--primary-hover); }
+.btn-conference-confirm { background: #7c3aed; color: #fff; }
+.btn-conference-confirm:hover:not(:disabled) { background: #6d28d9; }
+.btn-transfer-cancel { background: #f1f5f9; color: var(--text); }
+.btn-transfer-cancel:hover { background: #e2e8f0; }
+
+/* Toast */
+.toast {
+  position: fixed; top: 70px; right: 24px; background: #1e293b; color: #fff;
+  padding: 10px 18px; border-radius: 6px; font-size: 13px; z-index: 2000;
+  animation: toastIn 0.3s; box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+@keyframes toastIn { from{transform:translateX(20px);opacity:0} to{transform:translateX(0);opacity:1} }
+
+/* 话务台状态浮窗（离开话务台页面时显示） */
+.console-widget {
+  position: fixed; bottom: 20px; right: 20px; width: 260px;
+  background: #fff; border-radius: 10px; box-shadow: 0 8px 30px rgba(0,0,0,0.18);
+  border: 1px solid var(--border); z-index: 900; overflow: hidden;
+  animation: widgetIn 0.3s ease-out;
+}
+@keyframes widgetIn { from{transform:translateY(20px);opacity:0} to{transform:translateY(0);opacity:1} }
+.cw-header {
+  padding: 10px 14px; background: linear-gradient(135deg, #1e293b, #334155);
+  color: #fff; display: flex; align-items: center; justify-content: space-between;
+  cursor: pointer; font-size: 13px; font-weight: 600;
+}
+.cw-title { display: flex; align-items: center; gap: 7px; }
+.cw-close { width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; border-radius: 4px; font-size: 12px; opacity: 0.6; cursor: pointer; }
+.cw-close:hover { opacity: 1; background: rgba(255,255,255,0.15); }
+.cw-body { padding: 12px 14px; }
+.cw-status-row { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; margin-bottom: 10px; }
+.cw-status-dot { width: 10px; height: 10px; border-radius: 50%; background: #16a34a; }
+.cw-status-dot.ringing { background: #f59e0b; animation: pulse-badge 1s infinite; }
+.cw-status-dot.incall { background: #1a73e8; }
+.cw-call-info { margin-bottom: 10px; }
+.cw-call-name { font-size: 14px; font-weight: 600; color: var(--text); }
+.cw-call-meta { display: flex; justify-content: space-between; font-size: 12px; color: var(--text-secondary); margin-top: 3px; }
+.cw-queue-row { display: flex; gap: 10px; margin-bottom: 12px; }
+.cw-queue-item { flex: 1; background: #f8fafc; border-radius: 6px; padding: 8px; text-align: center; }
+.cw-queue-label { display: block; font-size: 11px; color: var(--text-muted); }
+.cw-queue-num { display: block; font-size: 18px; font-weight: 700; color: var(--text); margin-top: 2px; }
+.cw-return-btn { width: 100%; padding: 8px; background: var(--primary); color: #fff; border: none; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; transition: background 0.15s; }
+.cw-return-btn:hover { background: var(--primary-hover); }
+
+/* 占位页（其他菜单） */
+.placeholder-card {
+  flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  color: var(--text-muted);
+}
+.ph-icon {
+  width: 84px; height: 84px; border-radius: 50%; background: #eef0f3;
+  display: flex; align-items: center; justify-content: center; margin-bottom: 20px;
+  color: #c3c8cf;
+}
+.ph-title { font-size: 18px; font-weight: 600; color: var(--text); }
+.ph-sub { font-size: 13px; margin-top: 8px; }
+.ph-hint { font-size: 12px; margin-top: 20px; color: var(--text-muted); background: #fff; border: 1px dashed var(--border); padding: 8px 16px; border-radius: 8px; }
+
+/* ===== 头部话务条（顶栏坐席区 + 中间核心通话区） ===== */
+.topbar-left { display: flex; align-items: center; gap: 12px; min-width: 0; flex-shrink: 0; }
+.tb-brand { display: flex; align-items: center; gap: 7px; flex-shrink: 0; }
+.tb-brand-icon {
+  width: 26px; height: 26px; border-radius: 7px; background: var(--primary); color: #fff;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.tb-brand-name { font-size: 14px; font-weight: 700; color: var(--text); white-space: nowrap; }
+.tb-divider { width: 1px; height: 22px; background: var(--border); flex-shrink: 0; }
+.tb-call {
+  flex: 1; display: flex; align-items: center; justify-content: center; gap: 10px;
+  min-width: 0; overflow: hidden;
+}
+.tb-call .tb-tag { font-size: 11px; padding: 1px 8px; border-radius: 9px; background: var(--primary-light); color: var(--primary); white-space: nowrap; flex-shrink: 0; }
+.tb-call .tb-tag.ext-tag { background: #ffedd5; color: #ea580c; }
+.tb-call .tb-tag.conf-tag { background: #ede9fe; color: #7c3aed; }
+.tb-call .tb-name { font-size: 14px; font-weight: 600; color: var(--text); white-space: nowrap; }
+.tb-call .tb-num { font-size: 12px; color: var(--text-muted); white-space: nowrap; }
+.tb-timer {
+  font-size: 15px; font-weight: 700; color: var(--primary); white-space: nowrap; flex-shrink: 0;
+  font-variant-numeric: tabular-nums; background: var(--primary-light); padding: 2px 10px; border-radius: 6px;
+}
+.tb-timer.hold { color: #b45309; background: #fffbeb; }
+.tb-btn {
+  padding: 6px 14px; border-radius: 6px; border: 1px solid var(--border); background: #fff;
+  font-size: 13px; cursor: pointer; color: var(--text-secondary); white-space: nowrap; flex-shrink: 0;
+}
+.tb-btn:hover { border-color: var(--primary); color: var(--primary); }
+.tb-btn.primary { background: var(--call); border-color: var(--call); color: #fff; font-weight: 600; }
+.tb-btn.primary:hover { background: var(--call-hover); color: #fff; }
+.tb-btn.danger { color: var(--danger); border-color: #fecaca; }
+.tb-btn.danger:hover { background: #fef2f2; border-color: var(--danger); color: var(--danger); }
+.topbar-right { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+.agent-card { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-secondary); white-space: nowrap; }
+.agent-card .agent-id { background: var(--primary-light); color: var(--primary); padding: 2px 10px; border-radius: 10px; font-weight: 600; }
+.signin-btn {
+  padding: 7px 18px; border-radius: 6px; border: none; background: var(--call); color: #fff;
+  font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap;
+}
+.signin-btn:hover { background: var(--call-hover); }
+.signout-btn {
+  padding: 7px 16px; border-radius: 6px; border: 1px solid #fecaca; background: #fff; color: var(--danger);
+  font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap;
+}
+.signout-btn:hover { background: #fef2f2; }
+.status-offline { background: #f1f5f9; color: #64748b; }
+
+/* ===== 底部系统状态栏 ===== */
+.main-statusbar {
+  height: 26px; background: #fff; border-top: 1px solid var(--border); flex-shrink: 0;
+  display: flex; align-items: center; gap: 18px; padding: 0 16px;
+  font-size: 11px; color: var(--text-muted); white-space: nowrap;
+}
+.main-statusbar .sb-item { display: flex; align-items: center; gap: 5px; }
+.main-statusbar .sb-clock { margin-left: auto; font-variant-numeric: tabular-nums; }
+
+/* ===== 坐席签入/签出确认弹窗 ===== */
+.confirm-overlay {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.4); z-index: 1100;
+  display: flex; align-items: center; justify-content: center; animation: fadeIn 0.2s;
+}
+.confirm-modal { background: #fff; border-radius: 10px; width: 340px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); animation: slideUp 0.3s; }
+.cm-header { padding: 16px 20px 12px; font-size: 15px; font-weight: 600; color: var(--text); }
+.cm-agent-preview {
+  margin: 0 20px 12px; background: #f8fafc; border: 1px solid var(--border); border-radius: 8px;
+  padding: 12px 14px; display: flex; align-items: center; gap: 12px;
+}
+.cm-agent-preview .cmp-avatar {
+  width: 38px; height: 38px; border-radius: 50%; background: var(--primary-light); color: var(--primary);
+  display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 16px; flex-shrink: 0;
+}
+.cm-agent-preview .cmp-info { font-size: 12px; color: var(--text-secondary); line-height: 1.7; }
+.cm-agent-preview .cmp-info b { color: var(--text); font-size: 13px; }
+.cm-agent-preview.danger { background: #fef2f2; border-color: #fecaca; }
+.cm-desc { margin: 0 20px 14px; font-size: 12px; color: var(--text-secondary); }
+.cm-actions { display: flex; gap: 10px; padding: 0 20px 18px; }
+.cm-actions button { flex: 1; padding: 10px; border-radius: 6px; border: none; font-size: 13px; font-weight: 600; cursor: pointer; }
+.cm-btn-cancel { background: #f1f5f9; color: var(--text); }
+.cm-btn-cancel:hover { background: #e2e8f0; }
+.cm-btn-ok { background: var(--call); color: #fff; }
+.cm-btn-ok:hover { background: var(--call-hover); }
+.cm-btn-ok.danger { background: var(--hangup); }
+.cm-btn-ok.danger:hover { background: var(--hangup-hover); }
+/* ===== v3 双方通话记录 + 酒店服务记录（替代 v2 快捷服务/要点） ===== */
+.cc-records {
+  flex: 1; min-height: 0; display: flex; gap: 14px; padding: 12px 14px; background: #fff;
+  border-top: 1px solid var(--border);
+}
+.cr-block { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.cr-block.svc-block { flex: 0 0 300px; border-right: 1px solid var(--border); padding-right: 14px; }
+.cr-call-list { display: flex; flex-direction: column; gap: 6px; }
+.cc-records .cr-call-list { flex: 1; overflow-y: auto; }
+.cr-call {
+  display: flex; align-items: center; gap: 10px; padding: 8px 10px;
+  background: #f8fafc; border: 1px solid #eef2f7; border-radius: 6px; font-size: 12px;
+}
+.cr-call .cc-dir-icon { flex-shrink: 0; }
+.cr-call .cc-dir-icon.in { color: #16a34a; }
+.cr-call .cc-dir-icon.out { color: #1a73e8; }
+.cr-call .cc-status { font-weight: 600; color: var(--text); flex: 1; min-width: 0; }
+.cr-call .cc-time { color: var(--text-muted); font-size: 11px; white-space: nowrap; }
+.cr-call .cc-dur { color: var(--text-muted); font-size: 11px; min-width: 44px; text-align: right; font-variant-numeric: tabular-nums; }
+.wb-title { font-size: 12px; font-weight: 700; color: var(--text); display: flex; align-items: center; gap: 6px; }
+.wb-title .wb-badge { font-size: 10px; background: var(--primary-light); color: var(--primary); border-radius: 10px; padding: 0 7px; font-weight: 600; }
+.wb-empty {
+  font-size: 11px; color: var(--text-muted); padding: 10px; text-align: center;
+  background: #fafafa; border: 1px dashed var(--border); border-radius: 6px;
+}
+.wb-note-input-row { display: flex; gap: 6px; }
+.wb-note-input {
+  flex: 1; border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px;
+  font-size: 12px; outline: none; background: #fff;
+}
+.wb-note-input:focus { border-color: var(--primary); }
+.wb-note-add { background: var(--primary); color: #fff; border: none; border-radius: 6px; padding: 6px 12px; font-size: 12px; cursor: pointer; flex-shrink: 0; }
+.wb-note-add:hover { background: var(--primary-hover); }
+/* 酒店服务记录（内线客房在住期间，字段参考任务中心：类型/状态/物品/时间） */
+.svc-list { display: flex; flex-direction: column; gap: 6px; overflow-y: auto; max-height: 320px; }
+.svc-item {
+  display: flex; align-items: flex-start; gap: 8px; padding: 8px 10px;
+  background: #f8fafc; border: 1px solid #eef2f7; border-radius: 6px;
+}
+.svc-icon { font-size: 16px; line-height: 1.3; flex-shrink: 0; }
+.svc-main { flex: 1; min-width: 0; }
+.svc-name { font-size: 12px; font-weight: 600; color: var(--text); display: flex; align-items: center; gap: 6px; }
+.svc-status { font-size: 10px; padding: 0 6px; border-radius: 8px; font-weight: 600; }
+.svc-status.done { background: #ecfdf5; color: #10b981; }
+.svc-status.doing { background: #fffbeb; color: #f59e0b; }
+.svc-detail { font-size: 11px; color: var(--text-muted); margin-top: 2px; line-height: 1.5; }
+.svc-time { font-size: 10px; color: var(--text-muted); white-space: nowrap; }
+/* 滚动条 */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+</style>
+</head>
+
+<body>
+<!-- ============================================================
+     整体布局：左侧菜单（图片2框架） + 右侧话务台主区
+     ============================================================ -->
+<div class="app-layout">
+
+  <!-- ===== 左侧菜单树（图片2框架，第一个菜单改为“话务台”） ===== -->
+  <aside class="sidebar">
+    <div class="sidebar-top">
+      <div class="org-avatar">房</div>
+      <div class="org-info">
+        <div class="org-name">房务中心总台</div>
+        <div class="org-sub">中远宾馆</div>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav" id="sidebarNav">
+      <div class="menu-item active" data-menu="console" onclick="switchMenu('console')">
+        <span class="menu-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+        </span>
+        <span class="menu-text">话务台</span>
+      </div>
+      <div class="menu-item" data-menu="callRecord" onclick="switchMenu('callRecord')">
+        <span class="menu-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/><line x1="12" y1="2" x2="12" y2="8"/><polyline points="8 4 12 8 16 4"/></svg>
+        </span>
+        <span class="menu-text">通话记录</span>
+      </div>
+      <div class="menu-item" data-menu="textReply" onclick="switchMenu('textReply')">
+        <span class="menu-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        </span>
+        <span class="menu-text">文本应答</span>
+      </div>
+      <div class="menu-item" data-menu="task" onclick="switchMenu('task')">
+        <span class="menu-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+        </span>
+        <span class="menu-text">任务中心</span>
+      </div>
+      <div class="menu-item" data-menu="roomBoard" onclick="switchMenu('roomBoard')">
+        <span class="menu-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+        </span>
+        <span class="menu-text">房态看板</span>
+      </div>
+      <div class="menu-item" data-menu="invoice" onclick="switchMenu('invoice')">
+        <span class="menu-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        </span>
+        <span class="menu-text">发票管理</span>
+      </div>
+      <div class="menu-item" data-menu="staff" onclick="switchMenu('staff')">
+        <span class="menu-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        </span>
+        <span class="menu-text">人员指挥</span>
+      </div>
+      <div class="menu-item" data-menu="aiAgent" onclick="switchMenu('aiAgent')">
+        <span class="menu-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="8" width="16" height="12" rx="2"/><path d="M12 8V4M8 4h8"/><circle cx="12" cy="14" r="2"/></svg>
+        </span>
+        <span class="menu-text">AI智能体</span>
+      </div>
+      <div class="menu-item" data-menu="mallOrder" onclick="switchMenu('mallOrder')">
+        <span class="menu-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+        </span>
+        <span class="menu-text">商城订单</span>
+      </div>
+      <div class="menu-item" data-menu="operation" onclick="switchMenu('operation')">
+        <span class="menu-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        </span>
+        <span class="menu-text">运营管理</span>
+      </div>
+    </nav>
+
+    <div class="sidebar-bottom">
+      <div class="sb-user-avatar">中</div>
+      <span class="sb-user-name">中远宾馆</span>
+      <div class="sb-settings" title="设置">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ===== 右侧主区 ===== -->
+  <div class="main">
+    <!-- 顶栏（头部话务条：左=话务台标识+面包屑+坐席状态；中=核心通话信息；右=坐席卡+签入签出） -->
+    <div class="main-topbar">
+      <div class="topbar-left">
+        <div class="tb-brand" title="话务台">
+          <span class="tb-brand-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg></span>
+          <span class="tb-brand-name">话务台</span>
+        </div>
+        <div class="tb-divider" id="tbCrumbDivider"></div>
+        <div class="main-breadcrumb" id="tbCrumb">首页 / 话务台</div>
+        <span id="agentStatusBadge" class="console-status-badge status-offline">
+          <span class="status-dot"></span><span id="agentStatusText">未签入</span>
+        </span>
+      </div>
+      <div class="tb-call" id="topbarCall"></div>
+      <div class="topbar-right" id="agentZone"></div>
+    </div>
+
+    <!-- ===== 页面：话务台 ===== -->
+    <div id="page-console" class="page active">
+      <!-- 全局 AI 接听模式（话务全局设置，与单通通话无关） -->
+      <div class="ai-global-bar">
+        <div class="aig-btns">
+          <button class="aimode-btn internal" id="aiModeIn" onclick="toggleAiAnswer('internal')" title="开启后，内线来电由 AI 自动接听">
+            <span class="am-icon"></span><span class="am-text">内线AI接听</span><span class="am-set"></span>
+          </button>
+          <button class="aimode-btn external" id="aiModeEx" onclick="toggleAiAnswer('external')" title="开启后，外线来电由 AI 自动接听">
+            <span class="am-icon"></span><span class="am-text">外线AI接听</span><span class="am-set"></span>
+          </button>
+        </div>
+      </div>
+      <div class="console-grid">
+        <!-- 左上：呼叫队列 -->
+        <div class="panel queue-panel">
+          <div class="panel-header">
+            <span>呼叫队列</span>
+            <span class="count-badge" id="callQueueCount">0</span>
+          </div>
+          <div class="panel-body" id="callQueueList">
+            <div class="queue-empty">暂无等待来电</div>
+          </div>
+        </div>
+
+        <!-- 中间：当前连接（跨两行） -->
+        <div class="panel current-connection">
+          <div class="panel-header">
+            <span>当前连接</span>
+            <span id="ccStatusText" style="font-size:12px;color:var(--text-muted);font-weight:400;">当前空闲</span>
+          </div>
+          <div id="ccContent" class="cc-idle">
+            <div class="cc-idle-icon">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5">
+                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
+              </svg>
+            </div>
+            <div class="cc-idle-text">当前空闲</div>
+            <div class="cc-idle-sub">等待来电或使用拨号盘发起呼叫</div>
+          </div>
+        </div>
+
+        <!-- 右上：通话记录 -->
+        <div class="panel call-history-panel">
+          <div class="panel-header"><span>通话记录</span></div>
+          <div class="history-tabs" id="historyTabs">
+            <div class="history-tab active" data-filter="all">全部</div>
+            <div class="history-tab" data-filter="answered">已接</div>
+            <div class="history-tab" data-filter="outbound">已拨</div>
+            <div class="history-tab" data-filter="transferred">转接</div>
+            <div class="history-tab" data-filter="missed">未接</div>
+          </div>
+          <div class="history-search">
+            <input type="text" placeholder="搜索号码/姓名" id="historySearchInput">
+            <button class="btn-query" onclick="filterHistory()">查询</button>
+          </div>
+          <div class="history-list" id="historyList"></div>
+        </div>
+
+        <!-- 左下：驻留队列 -->
+        <div class="panel queue-panel">
+          <div class="panel-header">
+            <span>驻留队列</span>
+            <span class="count-badge" id="parkQueueCount" style="background:#64748b;">0</span>
+          </div>
+          <div class="panel-body" id="parkQueueList">
+            <div class="queue-empty">暂无驻留通话</div>
+          </div>
+        </div>
+
+        <!-- 左下大：通讯录 -->
+        <div class="panel contacts-panel">
+          <div class="panel-header">
+            <span>通讯录</span>
+            <span id="contactsTotal" style="font-size:12px;color:var(--text-muted);font-weight:400;">共 0 条</span>
+          </div>
+          <div class="contacts-layout">
+            <div class="contacts-tree" id="contactsTree"></div>
+            <div class="contacts-main">
+              <div class="contacts-toolbar">
+                <input type="text" placeholder="输入姓名/分机号搜索" id="contactSearchInput" oninput="resetContactPage()">
+                <div class="radio-group">
+                  <label><input type="radio" name="contactFilter" value="org" checked onchange="resetContactPage()"> 组织</label>
+                  <label><input type="radio" name="contactFilter" value="favorite" onchange="resetContactPage()"> 收藏</label>
+                </div>
+                <button class="btn-query" onclick="resetContactPage()">查询</button>
+              </div>
+              <div class="contacts-table-wrap">
+                <table class="contacts-table">
+                  <thead>
+                    <tr><th style="width:7%;">收藏</th><th style="width:7%;">序号</th><th style="width:9%;">类型</th><th style="width:22%;">名称</th><th style="width:18%;">内线号码</th><th style="width:20%;">关联电话</th><th style="width:17%;">岗位</th></tr>
+                  </thead>
+                  <tbody id="contactsTableBody"></tbody>
+                </table>
+              </div>
+              <div class="contacts-pagination" id="contactsPagination"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 右下：拨号盘 + 通话控制 -->
+        <div class="panel dialpad-panel">
+          <div class="panel-header"><span>拨号盘</span></div>
+          <div class="dial-row">
+            <div class="dial-display" id="dialDisplay">&nbsp;</div>
+            <button class="dial-call-btn" onclick="makeOutboundCall()">呼叫</button>
+          </div>
+          <div class="dialpad-grid" id="dialpadGrid">
+            <div class="dial-key" onclick="dialPress('1')">1</div>
+            <div class="dial-key" onclick="dialPress('2')">2</div>
+            <div class="dial-key" onclick="dialPress('3')">3</div>
+            <div class="dial-key" onclick="dialPress('4')">4</div>
+            <div class="dial-key" onclick="dialPress('5')">5</div>
+            <div class="dial-key" onclick="dialPress('6')">6</div>
+            <div class="dial-key" onclick="dialPress('7')">7</div>
+            <div class="dial-key" onclick="dialPress('8')">8</div>
+            <div class="dial-key" onclick="dialPress('9')">9</div>
+            <div class="dial-key fn" onclick="dialPress('*')">*</div>
+            <div class="dial-key fn" onclick="dialPress('0')">0</div>
+            <div class="dial-key fn" onclick="dialPress('#')">#</div>
+          </div>
+          <div class="dial-fn-row">
+            <div class="dial-key fn" onclick="dialClear()">清空</div>
+            <div class="dial-key fn" onclick="dialBackspace()">回退</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 页面：其他菜单占位 ===== -->
+    <div id="page-placeholder" class="page">
+      <div class="placeholder-card">
+        <div class="ph-icon">
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+        </div>
+        <div class="ph-title" id="phTitle">模块建设中</div>
+        <div class="ph-sub" id="phSub">该模块暂未接入</div>
+        <div class="ph-hint">话务台仍在后台运行：来话与通话操作已融合在顶部话务条——来电在顶栏直接接听/拒接，通话中可在顶栏挂断、驻留恢复，保持/转接等操作回话务台页处理</div>
+      </div>
+    </div>
+
+    <!-- ===== 底部系统状态栏 ===== -->
+    <div class="main-statusbar" id="statusBar">
+      <span class="sb-item">版本 V2.4.1</span>
+      <span class="sb-item">IP 192.168.1.108</span>
+      <span class="sb-item" id="sbSignin">未签入</span>
+      <span class="sb-item sb-clock" id="sbClock">--:--:--</span>
+    </div>
+  </div>
+</div>
+
+<!-- 来话弹窗 -->
+<div id="incomingOverlay" class="incoming-overlay" style="display:none;">
+  <div class="incoming-modal">
+    <div class="incoming-header" id="incHeader">
+      <div class="ring-icon">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2">
+          <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
+        </svg>
+      </div>
+      <div class="inc-type" id="incTypeLabel">内线来电</div>
+      <div class="inc-name" id="incName">未知来电</div>
+      <div class="inc-number" id="incNumber"></div>
+    </div>
+    <div class="incoming-body">
+      <div class="incoming-meta" id="incMeta"></div>
+    </div>
+    <div class="incoming-actions">
+      <button class="btn-inc-answer" onclick="answerIncoming()">接听</button>
+      <button class="btn-inc-decline" onclick="declineIncoming()">拒接</button>
+    </div>
+  </div>
+</div>
+
+<!-- 转接/三方弹窗 -->
+<div id="transferOverlay" class="transfer-overlay" style="display:none;">
+  <div class="transfer-modal transfer-modal-lg">
+    <div class="tf-header">
+      <h3>通话操作</h3>
+      <span class="tf-close" onclick="closeTransfer()">&#10005;</span>
+    </div>
+    <div class="tf-tabs">
+      <div class="tf-tab active" id="tfTabTransfer" onclick="setTfMode('transfer')">转接</div>
+      <div class="tf-tab" id="tfTabConference" onclick="setTfMode('conference')">三方通话</div>
+    </div>
+    <div class="tf-current">
+      <span class="tf-current-label">当前通话：</span>
+      <span id="tfCurrentCaller" class="tf-current-name"></span>
+    </div>
+    <div class="tf-search-row">
+      <input type="text" id="tfSearchInput" class="tf-search" placeholder="搜索联系人或部门..." oninput="renderTransferContacts()">
+    </div>
+    <div class="tf-contact-list" id="tfContactList"></div>
+    <div class="tf-manual-row">
+      <span class="tf-manual-label">或输入号码：</span>
+      <input type="text" id="tfManualNumber" class="tf-manual-input" placeholder="输入内线/外线号码" oninput="onTfManualInput()">
+    </div>
+    <div class="tf-selected" id="tfSelected" style="display:none;">
+      <span id="tfSelectedText"></span>
+    </div>
+    <div class="transfer-actions">
+      <button class="btn-transfer-cancel" onclick="closeTransfer()">取消</button>
+      <button class="btn-transfer-confirm" id="tfBtnConfirm" onclick="confirmTfAction()" disabled>确认转接</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 坐席签入/签出确认弹窗 ===== -->
+<div id="confirmOverlay" class="confirm-overlay" style="display:none;">
+  <div class="confirm-modal">
+    <div class="cm-header" id="cmTitle">确认签入</div>
+    <div class="cm-agent-preview" id="cmPreview"></div>
+    <div class="cm-desc" id="cmDesc"></div>
+    <div class="cm-actions">
+      <button class="cm-btn-cancel" onclick="closeConfirm()">取消</button>
+      <button class="cm-btn-ok" id="cmOk">确认</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// 话务台业务逻辑（由原话务台.html 完整迁移）
+// ============================================================
+
+// ===== 状态管理 =====
+const state = {
+  currentMenu: 'console', // console | 其他菜单
+  signedIn: false, // 坐席签入状态：未签入时不分配来电、话务操作引导签入
+  signInTime: null,
+  agentStatus: 'offline', // offline(未签入) | idle | ringing | in-call | on-hold
+  incomingCall: null,
+  activeCall: null,
+  callQueue: [],
+  parkQueue: [],
+  callHistory: [],
+  historyFilter: 'all',
+  historySearch: '',
+  contacts: [],
+  contactFilter: 'org',
+  contactSearch: '',
+  selectedDept: 'all',
+  contactPage: 1,
+  contactPageSize: 7,
+  expandedDepts: {},
+  dialNumber: '',
+  aiAnswerMode: { internal: false, external: false }, // AI 接听模式（一期占位，二期接入后生效）
+  isConference: false,
+  conferenceParties: [],
+  tfMode: 'transfer',
+  tfSelected: null,
+  transferState: null,
+  transferTarget: null,
+  isOutboundRinging: false,
+  callTimer: null,
+  callSeconds: 0,
+  transcriptTimer: null,
+  transcriptIndex: 0,
+  incomingTimer: null,
+  incomingWaitTimer: null,
+  incomingWaitSeconds: 0,
+};
+
+// ===== 模拟数据 =====
+const hotelGuests = [
+  { name: '张先生', room: '1208', level: 'VIP金卡', number: '81208', type: 'internal', typeLabel: '内线', category: 'guest',
+    services: [
+      { icon: '&#127873;', name: '送物服务', detail: '洗漱用品×2 · 毛巾×2', status: 'done', time: '14:32' },
+      { icon: '&#129529;', name: '清扫服务', detail: '房间清洁 · 已消毒', status: 'done', time: '10:05' },
+      { icon: '&#9200;', name: '叫醒服务', detail: '明早 06:30 一次叫醒', status: 'doing', time: '已预约' }
+    ],
+    history: [
+      { direction: 'in',  status: '已接', time: '今天 09:32', duration: '03:45' },
+      { direction: 'out', status: '已拨', time: '昨天 18:20', duration: '02:05' },
+      { direction: 'in',  status: '已接', time: '昨天 10:12', duration: '01:30' }
+    ] },
+  { name: '李女士', room: '0815', level: '普通会员', number: '80815', type: 'internal', typeLabel: '内线', category: 'guest',
+    services: [
+      { icon: '&#9200;', name: '叫醒服务', detail: '明早 06:30 · 中式早餐', status: 'doing', time: '已预约' },
+      { icon: '&#127873;', name: '送物服务', detail: '一次性拖鞋×2', status: 'done', time: '13:40' }
+    ],
+    history: [
+      { direction: 'in', status: '已接', time: '今天 08:58', duration: '02:10' },
+      { direction: 'in', status: '未接', time: '前天 21:05', duration: '--' }
+    ] },
+  { name: '王总', room: '1501', level: 'VIP钻石', number: '81501', type: 'internal', typeLabel: '内线', category: 'guest',
+    services: [
+      { icon: '&#128295;', name: '工程报修', detail: '空调制冷异常 · 检修中', status: 'doing', time: '15:20' },
+      { icon: '&#127873;', name: '送物服务', detail: '水果拼盘 ×1', status: 'done', time: '14:05' },
+      { icon: '&#128682;', name: '退房提醒', detail: '明日 14:00 退房', status: 'doing', time: '已提醒' }
+    ],
+    history: [
+      { direction: 'in',  status: '转接', time: '今天 08:40', duration: '01:05' },
+      { direction: 'out', status: '已拨', time: '昨天 16:30', duration: '04:20' }
+    ] },
+  { name: '陈先生', room: '0623', level: '普通客人', number: '80623', type: 'internal', typeLabel: '内线', category: 'guest',
+    services: [
+      { icon: '&#127873;', name: '送物服务', detail: '洗漱用品×2 · 矿泉水×1', status: 'done', time: '11:12' },
+      { icon: '&#128295;', name: '工程报修', detail: '卫生间水龙头漏水', status: 'doing', time: '待处理' }
+    ],
+    history: [
+      { direction: 'in', status: '未接', time: '今天 08:22', duration: '--' },
+      { direction: 'in', status: '已接', time: '昨天 14:40', duration: '02:35' }
+    ] },
+  { name: '刘女士', room: '1012', level: 'VIP银卡', number: '81012', type: 'internal', typeLabel: '内线', category: 'guest',
+    services: [
+      { icon: '&#127873;', name: '送物服务', detail: '鲜花 · 水果礼盒', status: 'done', time: '09:30' },
+      { icon: '&#9200;', name: '叫醒服务', detail: '明早 07:30', status: 'doing', time: '已预约' }
+    ],
+    history: [
+      { direction: 'in',  status: '已接', time: '昨天 22:15', duration: '04:30' },
+      { direction: 'out', status: '已拨', time: '前天 11:20', duration: '01:12' },
+      { direction: 'in',  status: '已接', time: '09-01 15:40', duration: '03:05' }
+    ] },
+  { name: '赵先生', room: '0905', level: '普通客人', number: '80905', type: 'internal', typeLabel: '内线', category: 'guest',
+    services: [
+      { icon: '&#129529;', name: '清扫服务', detail: '房间清洁', status: 'done', time: '08:50' },
+      { icon: '&#127873;', name: '送物服务', detail: '矿泉水×2', status: 'done', time: '12:20' }
+    ],
+    history: [
+      { direction: 'in', status: '已接', time: '09-02 19:10', duration: '02:22' },
+      { direction: 'in', status: '已接', time: '09-01 08:30', duration: '01:48' }
+    ] },
+  { name: '周女士', room: '1108', level: 'VIP金卡', number: '81108', type: 'internal', typeLabel: '内线', category: 'guest',
+    services: [
+      { icon: '&#127873;', name: '送物服务', detail: '浴巾×2 · 加床品', status: 'done', time: '15:02' },
+      { icon: '&#129529;', name: '清扫服务', detail: '房间清洁', status: 'done', time: '10:30' },
+      { icon: '&#9200;', name: '叫醒服务', detail: '明早 07:00', status: 'doing', time: '已预约' }
+    ],
+    history: [
+      { direction: 'in',  status: '已接', time: '今天 07:50', duration: '06:15' },
+      { direction: 'out', status: '已拨', time: '昨天 20:00', duration: '02:40' }
+    ] },
+  { name: '外部预订热线', room: '--', level: '--', number: '0591-88886666', type: 'external', typeLabel: '外线', category: 'external', location: '福建福州', callType: '预订咨询' },
+  { name: '携程客服', room: '--', level: '--', number: '021-34064888', type: 'external', typeLabel: '外线', category: 'external', location: '上海', callType: 'OTA渠道' },
+  { name: '工程部-老吴', room: '--', level: '--', number: '8201', type: 'internal', typeLabel: '内线', category: 'staff', dept: '工程部', position: '维修技工' },
+];
+
+const conversationScripts = [
+  { // 送餐
+    guest: ['你好，我是1208房间的客人，想点一份送餐服务。', '我看了一下菜单，想要一份牛肉面。', '再加一杯鲜榨橙汁，和一份水果拼盘。', '对了，牛肉面不要放香菜。', '大概需要多久能送到？', '好的，谢谢，麻烦快一点，我有点饿了。'],
+    agent: ['您好，张先生，这里是房务中心，很高兴为您服务。请问有什么可以帮您？', '好的，张先生，牛肉面一份。还需要其他的吗？', '好的，鲜榨橙汁一杯，水果拼盘一份。牛肉面有什么忌口吗？', '好的，牛肉面不放香菜，我已备注。', '大约20分钟左右送到您的房间，餐费会计入房账。', '好的，祝您用餐愉快，有其他需要随时联系我们。']
+  },
+  { // 叫醒服务
+    guest: ['你好，我想预约一个明天早上的叫醒服务。', '明天早上6点半，我住0815房间。', '对，就一次叫醒就行。', '另外，能帮我订一份明天早上的早餐吗？', '中式早餐，送到房间，7点左右。', '好的，谢谢，晚安。'],
+    agent: ['您好，李女士，这里是房务中心。请问需要什么帮助？', '好的，李女士，为您登记0815房间，明早6:30叫醒服务。请问需要重复叫醒吗？', '好的，单次叫醒已登记。还有其他可以帮您的吗？', '好的，中式早餐一份，明早7点送到0815房间。', '好的，叫醒和早餐都已为您登记。晚安，李女士。']
+  },
+  { // 维修
+    guest: ['你好，我房间的空调好像出问题了，不制冷。', '房间号1501，已经开了半小时了还是很热。', '我调到16度了，吹出来的风还是温的。', '另外，卫生间的水龙头也有点漏水。', '好的，麻烦尽快派人来看一下，太热了没法休息。', '好的，谢谢，我在房间等。'],
+    agent: ['您好，王总，非常抱歉给您带来不便。请问您的房间号是多少？', '好的，王总，我马上通知工程部上门检修。请问空调具体是什么情况？', '好的，了解了，可能是压缩机故障。还有其他问题吗？', '好的，水龙头漏水也一并报修。维修师傅预计10分钟内到达。', '好的，王总，师傅到了会敲门。给您带来不便非常抱歉。']
+  },
+  { // 加洗漱用品
+    guest: ['你好，能帮我送两套洗漱用品到房间吗？', '0623房间，牙刷和牙膏都需要。', '另外再加两条浴巾和一瓶矿泉水。', '对，就这些，麻烦快一点。', '好的，谢谢。'],
+    agent: ['您好，陈先生，这里是房务中心。请问需要什么？', '好的，陈先生，两套洗漱用品含牙刷牙膏。还需要其他的吗？', '好的，两条浴巾，一瓶矿泉水。马上安排服务员送到0623房间。', '预计5分钟内送到，您稍等。', '好的，祝您入住愉快，有其他需要随时联系。']
+  },
+  { // 退房咨询
+    guest: ['你好，我想咨询一下退房的事情。', '我是1012房间的，想明天下午2点退房，可以吗？', '因为我明天下午有个会议，中午走不了。', '好的，那需要额外收费吗？', '太好了，谢谢。那我明天2点前下来办理。', '好的，再见。'],
+    agent: ['您好，刘女士，这里是房务中心。请问有什么可以帮您？', '刘女士，正常退房时间是中午12点。我帮您查一下明天的房态...', '理解，我帮您看看能否延迟退房。明天1012房间暂时没有后续预订。', '可以为您延迟到下午2点退房，不额外收费。已为您登记。', '好的，刘女士，明天下午2点前到前台办理即可。祝您入住愉快。']
+  },
+  { // 叫车
+    guest: ['你好，能帮我叫一辆出租车吗？', '我是0905房间的，大概10分钟后到大堂。', '去福州南站，赶高铁。', '对，一辆车就够了，就我一个人。', '好的，谢谢，我马上下来。'],
+    agent: ['您好，赵先生，这里是礼宾部。请问需要什么帮助？', '好的，赵先生，马上为您叫车。请问您去哪里？', '好的，福州南站。请问几位乘客，需要什么车型？', '好的，已为您叫车，车牌号闽A·8X3F2，大约8分钟后到达酒店门口。', '好的，您到大堂后可以直接上车，司机已确认目的地。一路顺风。']
+  },
+  { // 投诉噪音
+    guest: ['你好，我要投诉，隔壁房间太吵了，根本没法休息！', '1108房间，隔壁1106一直在大声喧哗，还放音乐。', '已经持续一个多小时了，我明天还要早起开会。', '我之前已经打过一次电话了，没过多久又开始吵了。', '你们能不能管一下？再这样我要投诉到消协了！', '好，我等你们处理结果。'],
+    agent: ['您好，周女士，非常抱歉打扰您休息。请问您的房间号是多少？', '好的，周女士，我马上通知安保部和大堂副理上去处理。', '非常抱歉，我理解您的感受。我们这次会严肃处理。', '非常抱歉给您带来困扰，大堂副理已经上楼了，5分钟内给您反馈。', '好的，周女士，处理结果会第一时间通知您。再次深表歉意。']
+  },
+  { // 外线预订
+    guest: ['你好，我想预订一间今晚的豪华大床房。', '住一晚，请问有房吗？价格多少？', '我是你们的会员，有优惠吗？', '好的，那我订一间，用我手机号138****5678。', '需要付定金吗？还是到店付？', '好的，谢谢，我大概晚上8点到。'],
+    agent: ['您好，这里是星焕大酒店预订中心，很高兴为您服务。', '今晚豪华大床房还有空房，门市价688元。请问您是会员吗？', '会员价598元，含双早。请问需要预订吗？', '好的，已为您预订豪华大床房一间，预订人手机号138****5678。', '不需要付定金，房费到店支付即可。请您在今晚10点前到店办理入住。', '好的，期待您的光临，路上注意安全。再见。']
+  },
+];
+
+const contactsData = [
+  { type: '部门', name: '房务中心', ext: '88888', phone: '123456', position: '', dept: '房务中心', favorite: false },
+  { type: '员工', name: '张三', ext: '0008', phone: '1231241', position: '主管', dept: '房务中心', favorite: true },
+  { type: '员工', name: '林雄才', ext: '70002', phone: '139****2233', position: '主管', dept: '房务中心', favorite: false },
+  { type: '员工', name: '李芳', ext: '8190', phone: '8188', position: '服务员', dept: '房务中心', favorite: false },
+  { type: '员工', name: '王敏', ext: '8189', phone: '', position: '服务员', dept: '房务中心', favorite: true },
+  { type: '员工', name: '张丽', ext: '8191', phone: '', position: '服务员', dept: '房务中心', favorite: false },
+  { type: '员工', name: '黄丽', ext: '8192', phone: '135****7788', position: '领班', dept: '房务中心', favorite: false },
+  { type: '员工', name: '杨秀英', ext: '8193', phone: '', position: '服务员', dept: '房务中心', favorite: false },
+  { type: '员工', name: '吴翠萍', ext: '8194', phone: '', position: '服务员', dept: '房务中心', favorite: false },
+  { type: '员工', name: '郑小华', ext: '8195', phone: '', position: '服务员', dept: '房务中心', favorite: false },
+  { type: '部门', name: '前台总台', ext: '8188', phone: '', position: '', dept: '前台', favorite: false },
+  { type: '员工', name: '陈静', ext: '8101', phone: '138****1122', position: '大堂副理', dept: '前台', favorite: true },
+  { type: '员工', name: '刘洋', ext: '8102', phone: '', position: '接待员', dept: '前台', favorite: false },
+  { type: '员工', name: '林晓燕', ext: '8103', phone: '', position: '接待员', dept: '前台', favorite: false },
+  { type: '员工', name: '黄志强', ext: '8104', phone: '139****4455', position: '收银主管', dept: '前台', favorite: false },
+  { type: '员工', name: '吴梦琪', ext: '8105', phone: '', position: '接待员', dept: '前台', favorite: false },
+  { type: '员工', name: '徐丽丽', ext: '8106', phone: '', position: '礼宾员', dept: '前台', favorite: false },
+  { type: '部门', name: '工程部', ext: '8200', phone: '', position: '', dept: '工程部', favorite: false },
+  { type: '员工', name: '吴师傅', ext: '8201', phone: '137****3344', position: '维修工程师', dept: '工程部', favorite: false },
+  { type: '员工', name: '赵工', ext: '8202', phone: '', position: '弱电工程师', dept: '工程部', favorite: false },
+  { type: '员工', name: '马师傅', ext: '8203', phone: '', position: '水暖工', dept: '工程部', favorite: false },
+  { type: '员工', name: '高工', ext: '8204', phone: '136****9900', position: '工程部主管', dept: '工程部', favorite: true },
+  { type: '员工', name: '罗师傅', ext: '8205', phone: '', position: '电工', dept: '工程部', favorite: false },
+  { type: '部门', name: '餐饮部', ext: '8300', phone: '', position: '', dept: '餐饮部', favorite: false },
+  { type: '员工', name: '孙经理', ext: '8301', phone: '136****5566', position: '餐饮经理', dept: '餐饮部', favorite: false },
+  { type: '员工', name: '周大厨', ext: '8302', phone: '', position: '行政总厨', dept: '餐饮部', favorite: false },
+  { type: '员工', name: '吴领班', ext: '8303', phone: '', position: '餐厅领班', dept: '餐饮部', favorite: false },
+  { type: '员工', name: '郑小芳', ext: '8304', phone: '', position: '服务员', dept: '餐饮部', favorite: false },
+  { type: '员工', name: '何师傅', ext: '8305', phone: '135****2233', position: '面点师', dept: '餐饮部', favorite: false },
+  { type: '部门', name: '安保部', ext: '8500', phone: '', position: '', dept: '安保部', favorite: false },
+  { type: '员工', name: '周队长', ext: '8501', phone: '', position: '安保队长', dept: '安保部', favorite: false },
+  { type: '员工', name: '李保安', ext: '8502', phone: '', position: '安保员', dept: '安保部', favorite: false },
+  { type: '员工', name: '王保安', ext: '8503', phone: '', position: '安保员', dept: '安保部', favorite: false },
+  { type: '员工', name: '张监控', ext: '8504', phone: '138****7788', position: '监控员', dept: '安保部', favorite: false },
+  { type: '部门', name: '销售部', ext: '8600', phone: '', position: '', dept: '销售部', favorite: false },
+  { type: '员工', name: '马总监', ext: '8601', phone: '139****1122', position: '销售总监', dept: '销售部', favorite: true },
+  { type: '员工', name: '朱经理', ext: '8602', phone: '', position: '客户经理', dept: '销售部', favorite: false },
+  { type: '员工', name: '胡专员', ext: '8603', phone: '', position: '预订专员', dept: '销售部', favorite: false },
+];
+
+const deptTree = [
+  { name: '中远宾馆', children: [
+    { name: '房务中心', children: [
+      { name: '楼层服务组' },
+      { name: '公共区域组' },
+      { name: '布草房' },
+    ]},
+    { name: '前台', children: [
+      { name: '接待组' },
+      { name: '收银组' },
+    ]},
+    { name: '工程部', children: [
+      { name: '弱电组' },
+      { name: '强电组' },
+      { name: '装修组' },
+    ]},
+    { name: '餐饮部', children: [
+      { name: '中餐厅' },
+      { name: '西餐厅' },
+      { name: '宴会厅' },
+    ]},
+    { name: '安保部', children: [
+      { name: '消防组' },
+      { name: '巡逻组' },
+    ]},
+    { name: '销售部', children: [
+      { name: '会务组' },
+      { name: '旅行社组' },
+    ]},
+  ]}
+];
+
+// 初始通话记录
+const initialHistory = [
+  { type: 'answered', name: '张先生', number: '81208', time: '09:32', duration: '03:45', status: '已接', direction: 'in' },
+  { type: 'outbound', name: '工程部-老吴', number: '8201', time: '09:15', duration: '01:20', status: '已拨', direction: 'out' },
+  { type: 'answered', name: '李女士', number: '80815', time: '08:58', duration: '02:10', status: '已接', direction: 'in' },
+  { type: 'transferred', name: '王总', number: '81501', time: '08:40', duration: '01:05', status: '转接', direction: 'in' },
+  { type: 'missed', name: '陈先生', number: '80623', time: '08:22', duration: '--', status: '未接', direction: 'in' },
+  { type: 'answered', name: '刘女士', number: '81012', time: '昨天 22:15', duration: '04:30', status: '已接', direction: 'in' },
+  { type: 'outbound', name: '前台总台', number: '8188', time: '昨天 21:30', duration: '00:45', status: '已拨', direction: 'out' },
+];
+
+// ===== 初始化 =====
+function assignContactGroups() {
+  const groupMap = {
+    '张三': '楼层服务组', '林雄才': '楼层服务组', '李芳': '楼层服务组', '王敏': '楼层服务组', '郑小华': '楼层服务组',
+    '张丽': '公共区域组', '黄丽': '公共区域组',
+    '杨秀英': '布草房', '吴翠萍': '布草房',
+    '陈静': '接待组', '刘洋': '接待组', '林晓燕': '接待组', '吴梦琪': '接待组', '徐丽丽': '接待组',
+    '黄志强': '收银组',
+    '赵工': '弱电组', '高工': '弱电组',
+    '吴师傅': '强电组', '马师傅': '强电组', '罗师傅': '强电组',
+    '孙经理': '中餐厅', '周大厨': '中餐厅', '何师傅': '中餐厅',
+    '吴领班': '西餐厅', '郑小芳': '宴会厅',
+    '周队长': '巡逻组', '李保安': '巡逻组',
+    '王保安': '消防组', '张监控': '消防组',
+    '马总监': '会务组',
+    '朱经理': '旅行社组', '胡专员': '旅行社组',
+  };
+  contactsData.forEach(c => {
+    if (c.type === '员工' && !c.group) {
+      c.group = groupMap[c.name] || '';
+    } else if (c.type === '部门') {
+      c.group = '';
+    }
+  });
+}
+
+function init() {
+  assignContactGroups();
+  state.contacts = [...contactsData];
+  state.callHistory = [...initialHistory];
+  renderContactsTree();
+  renderContacts();
+  renderHistory();
+  initAiModeBar();
+  updateAgentStatus();
+  updateTopbar();
+  updateStatusBar();
+  updateClock();
+  // 每秒：队列/驻留等待计时 + 顶栏通话区（等待/通话/保持时长）+ 状态栏时钟
+  setInterval(() => {
+    if (state.callQueue.length > 0) renderCallQueue();
+    if (state.parkQueue.length > 0) renderParkQueue();
+    renderTopbarCall();
+    updateClock();
+  }, 1000);
+}
+
+// ===== 菜单导航 =====
+const menuNames = {
+  console: '话务台',
+  callRecord: '通话记录',
+  textReply: '文本应答',
+  task: '任务中心',
+  roomBoard: '房态看板',
+  invoice: '发票管理',
+  staff: '人员指挥',
+  aiAgent: 'AI智能体',
+  mallOrder: '商城订单',
+  operation: '运营管理',
+};
+
+function switchMenu(menu) {
+  state.currentMenu = menu;
+  document.querySelectorAll('.menu-item').forEach(m => m.classList.toggle('active', m.dataset.menu === menu));
+  const isConsole = menu === 'console';
+  // 跨页精简：切到其他菜单时不显示菜单名/面包屑，最左侧只留话务台标识
+  document.getElementById('tbCrumb').style.display = isConsole ? '' : 'none';
+  document.getElementById('tbCrumbDivider').style.display = isConsole ? '' : 'none';
+  document.getElementById('page-console').classList.toggle('active', isConsole);
+  document.getElementById('page-placeholder').classList.toggle('active', !isConsole);
+  if (!isConsole) {
+    document.getElementById('phTitle').textContent = menuNames[menu] || '模块';
+    document.getElementById('phSub').textContent = '「' + (menuNames[menu] || menu) + '」模块建设中，敬请期待';
+  }
+  updateTopbar();
+}
+
+// ===== 头部话务条（顶栏）+ 坐席签入/签出 =====
+// 交互模型：
+//   - 顶栏即话务条：左侧「话务台」标识（话务台页附面包屑）+ 坐席状态（不展示计时时长）
+//   - 中间按状态展示核心通话信息：
+//       振铃 = 来电类型+对方+等待计时+接听/拒接；通话中 = 类型+对方+通话计时+挂断；
+//       空闲且有驻留 = 驻留号+对方+保持时长+恢复；空闲且无驻留 = 不显示
+//   - 右侧：未签入显示灰态+「IP签入」；签入后显示坐席卡（工号/分机）+「签出」
+//   - 来话分流：话务台页走全屏弹窗，其他菜单页直接在顶栏展示（不弹窗、不重复）
+//   - 保持/转接等次要操作收在话务台页内处理，顶栏只留核心操作
+function updateTopbar() {
+  renderTopbarCall();
+  renderAgentZone();
+}
+
+// 顶栏中间：核心通话信息
+function renderTopbarCall() {
+  const el = document.getElementById('topbarCall');
+  if (!el) return;
+  let html = '';
+  if (state.agentStatus === 'ringing' && state.incomingCall) {
+    const call = state.incomingCall;
+    html = '<span class="tb-tag' + (call.type === 'external' ? ' ext-tag' : '') + '">' + (call.typeLabel || '来电') + '</span>' +
+      '<span class="tb-name">' + call.name + '</span>' +
+      '<span class="tb-num">' + call.number + (call.room && call.room !== '--' ? ' · 房间 ' + call.room : '') + '</span>' +
+      '<span class="tb-timer hold" id="topWait">' + (state.incomingWaitSeconds || 0) + 's</span>' +
+      '<button class="tb-btn primary" onclick="answerIncoming()">接听</button>' +
+      '<button class="tb-btn danger" onclick="declineIncoming()">拒接</button>';
+  } else if (state.agentStatus === 'in-call' && state.activeCall) {
+    const call = state.activeCall;
+    const typeLabel = state.isConference ? '多方通话' : (state.transferState === 'dialing' ? '转接中' : (call.typeLabel || '通话'));
+    html = '<span class="tb-tag' + (state.isConference ? ' conf-tag' : (call.type === 'external' ? ' ext-tag' : '')) + '">' + typeLabel + '</span>' +
+      '<span class="tb-name">' + call.name + '</span>' +
+      '<span class="tb-num">' + call.number + '</span>' +
+      '<span class="tb-timer" id="topTimer">' + formatDuration(state.callSeconds) + '</span>' +
+      '<button class="tb-btn danger" onclick="hangup()">挂断</button>';
+  } else if (state.agentStatus === 'idle' && state.parkQueue.length > 0) {
+    const p = state.parkQueue[state.parkQueue.length - 1];
+    const held = Math.floor((Date.now() - p.parkTime) / 1000);
+    html = '<span class="tb-tag">驻留 ' + p.parkNumber + '</span>' +
+      '<span class="tb-name">' + p.name + '</span>' +
+      '<span class="tb-num">已保持 ' + formatDuration(held) + (state.parkQueue.length > 1 ? ' · 共 ' + state.parkQueue.length + ' 通' : '') + '</span>' +
+      '<button class="tb-btn primary" onclick="retrieveLatestPark()">恢复</button>';
+  }
+  el.innerHTML = html;
+}
+
+// 顶栏驻留恢复（恢复最近一通）
+function retrieveLatestPark() {
+  if (state.agentStatus !== 'idle') { showToast('请先结束当前通话'); return; }
+  retrievePark(state.parkQueue.length - 1);
+}
+
+// 顶栏右侧：坐席信息卡 + 签入/签出
+function renderAgentZone() {
+  const el = document.getElementById('agentZone');
+  if (!el) return;
+  if (!state.signedIn) {
+    el.innerHTML = '<span style="font-size:12px;color:var(--text-muted);white-space:nowrap;">未签入，无法接听来电</span>' +
+      '<button class="signin-btn" onclick="openSignIn()">IP签入</button>';
+  } else {
+    el.innerHTML = '<div class="agent-card">' +
+        '<span class="agent-id">工号 0001</span><span>分机 8333333</span><span>|</span><span>房务中心</span>' +
+      '</div>' +
+      '<button class="signout-btn" onclick="openSignOut()">签出</button>';
+  }
+}
+
+// 签入：简单确认框（仅坐席预览 + 确认/取消）
+function openSignIn() {
+  document.getElementById('cmTitle').textContent = '确认签入';
+  const pv = document.getElementById('cmPreview');
+  pv.className = 'cm-agent-preview';
+  pv.innerHTML = '<div class="cmp-avatar">中</div><div class="cmp-info"><b>中远宾馆 · 房务中心总台</b><br>坐席工号：0001　签入分机：8333333</div>';
+  document.getElementById('cmDesc').textContent = '签入后开始接收来话，状态转为「空闲 · 可接线」。';
+  const ok = document.getElementById('cmOk');
+  ok.textContent = '确认签入';
+  ok.className = 'cm-btn-ok';
+  ok.onclick = function () { closeConfirm(); doSignIn(); };
+  document.getElementById('confirmOverlay').style.display = 'flex';
+}
+
+function doSignIn() {
+  closeConfirm();
+  state.signedIn = true;
+  state.signInTime = new Date();
+  state.agentStatus = 'idle';
+  updateAgentStatus();
+  updateTopbar();
+  updateStatusBar();
+  startIncomingSimulation();
+  showToast('签入成功，状态：空闲 · 可接线');
+}
+
+// 签出：通话中/振铃中禁止；确认后完整复位
+function openSignOut() {
+  if (state.agentStatus === 'in-call') { showToast('通话中，不能签出，请先结束通话'); return; }
+  if (state.agentStatus === 'ringing') { showToast('振铃中，不能签出，请先处理来电'); return; }
+  document.getElementById('cmTitle').textContent = '确认签出';
+  const pv = document.getElementById('cmPreview');
+  pv.className = 'cm-agent-preview danger';
+  pv.innerHTML = '<div class="cmp-avatar" style="background:#fef2f2;color:var(--danger);">中</div><div class="cmp-info"><b>坐席 0001（分机 8333333）</b><br>签出后将停止来话分配，并清空当前通话、队列与驻留状态</div>';
+  document.getElementById('cmDesc').textContent = '确认现在签出吗？';
+  const ok = document.getElementById('cmOk');
+  ok.textContent = '确认签出';
+  ok.className = 'cm-btn-ok danger';
+  ok.onclick = function () { closeConfirm(); doSignOut(); };
+  document.getElementById('confirmOverlay').style.display = 'flex';
+}
+
+function doSignOut() {
+  closeConfirm();
+  state.signedIn = false;
+  stopIncomingSimulation();
+  hideIncomingModal();
+  stopCallTimer();
+  stopTranscript();
+  removeTypingIndicator();
+  state.incomingCall = null;
+  state.activeCall = null;
+  state.agentStatus = 'offline';
+  state.callQueue = [];
+  state.parkQueue = [];
+  state.isConference = false;
+  state.conferenceParties = [];
+  state.transferState = null;
+  state.transferTarget = null;
+  state.isOutboundRinging = false;
+  state.callSeconds = 0;
+  state.signInTime = null;
+  document.getElementById('transferOverlay').style.display = 'none';
+  updateAgentStatus();
+  renderCallQueue();
+  renderParkQueue();
+  renderCurrentConnection();
+  updateTopbar();
+  updateStatusBar();
+  showToast('已签出，回到未签入状态');
+}
+
+function closeConfirm() {
+  document.getElementById('confirmOverlay').style.display = 'none';
+}
+
+// 底部系统状态栏：版本 / IP / 签入时间 / 实时时钟
+function updateStatusBar() {
+  const el = document.getElementById('sbSignin');
+  if (el) el.textContent = state.signedIn && state.signInTime ? '签入 ' + formatTime(state.signInTime) : '未签入';
+}
+
+function updateClock() {
+  const el = document.getElementById('sbClock');
+  if (el) el.textContent = new Date().toLocaleTimeString('zh-CN', { hour12: false });
+}
+
+// ===== 来话模拟 =====
+function startIncomingSimulation() {
+  if (state.incomingTimer) return;
+  scheduleNextIncoming();
+}
+
+function stopIncomingSimulation() {
+  if (state.incomingTimer) {
+    clearTimeout(state.incomingTimer);
+    state.incomingTimer = null;
+  }
+}
+
+function scheduleNextIncoming() {
+  const delay = 12000 + Math.random() * 13000; // 12-25秒
+  state.incomingTimer = setTimeout(() => {
+    triggerIncomingCall();
+    scheduleNextIncoming();
+  }, delay);
+}
+
+function triggerIncomingCall() {
+  if (!state.signedIn) return; // 未签入：不分配来电
+  if (state.agentStatus === 'in-call') {
+    // 通话中来话进入队列
+    const guest = hotelGuests[Math.floor(Math.random() * hotelGuests.length)];
+    const queueItem = {
+      id: Date.now(),
+      ...guest,
+      waitStart: Date.now(),
+      script: conversationScripts[Math.floor(Math.random() * conversationScripts.length)]
+    };
+    state.callQueue.push(queueItem);
+    renderCallQueue();
+    showToast('新来电已进入呼叫队列');
+    updateTopbar();
+    return;
+  }
+  if (state.agentStatus === 'ringing') return;
+
+  const guest = hotelGuests[Math.floor(Math.random() * hotelGuests.length)];
+  state.incomingCall = {
+    id: Date.now(),
+    ...guest,
+    script: conversationScripts[Math.floor(Math.random() * conversationScripts.length)]
+  };
+  state.agentStatus = 'ringing';
+  state.incomingWaitSeconds = 0;
+  updateAgentStatus();
+  showIncomingModal();
+  updateTopbar();
+
+  // 15秒未接自动未接
+  state.incomingWaitTimer = setInterval(() => {
+    state.incomingWaitSeconds++;
+    const el = document.getElementById('incWait');
+    if (el) el.textContent = state.incomingWaitSeconds + 's';
+    if (state.incomingWaitSeconds >= 15) {
+      autoMissCall();
+    }
+  }, 1000);
+}
+
+function showIncomingModal() {
+  const call = state.incomingCall;
+  if (!call) return;
+  const header = document.getElementById('incHeader');
+  header.className = 'incoming-header';
+  if (call.type === 'external') {
+    header.classList.add('inc-external');
+  } else if (call.category === 'staff') {
+    header.classList.add('inc-staff');
+  }
+  document.getElementById('incTypeLabel').textContent = call.typeLabel + '来电';
+  document.getElementById('incName').textContent = call.name;
+  document.getElementById('incNumber').textContent = call.number;
+
+  // 根据类型动态生成meta字段
+  const meta = document.getElementById('incMeta');
+  let items = [];
+  if (call.type === 'external') {
+    // 外线：归属地、来电类型、等待时长
+    items = [
+      { label: '归属地', value: call.location || '未知' },
+      { label: '来电类型', value: call.callType || '普通来电' },
+      { label: '等待时长', value: '0s', id: 'incWait' }
+    ];
+  } else if (call.category === 'staff') {
+    // 内线员工：部门、岗位、等待时长
+    items = [
+      { label: '部门', value: call.dept || '--' },
+      { label: '岗位', value: call.position || '--' },
+      { label: '等待时长', value: '0s', id: 'incWait' }
+    ];
+  } else {
+    // 内线客房客人：房间号、客人等级、等待时长
+    items = [
+      { label: '房间号', value: call.room },
+      { label: '客人等级', value: call.level },
+      { label: '等待时长', value: '0s', id: 'incWait' }
+    ];
+  }
+  meta.innerHTML = items.map(it =>
+    '<div class="im-item"><div class="im-label">' + it.label + '</div>' +
+    '<div class="im-value"' + (it.id ? ' id="' + it.id + '"' : '') + '>' + it.value + '</div></div>'
+  ).join('');
+
+  // 页面分流：话务台页 → 全屏来话弹窗（完整形态）；其他菜单页 → 常驻话务条振铃态
+  if (state.currentMenu === 'console') {
+    document.getElementById('incomingOverlay').style.display = 'flex';
+  } else {
+    document.getElementById('incomingOverlay').style.display = 'none';
+    renderTopbarCall();
+  }
+}
+
+function hideIncomingModal() {
+  document.getElementById('incomingOverlay').style.display = 'none';
+  if (state.incomingWaitTimer) {
+    clearInterval(state.incomingWaitTimer);
+    state.incomingWaitTimer = null;
+  }
+}
+
+function answerIncoming() {
+  if (!state.incomingCall) return;
+  const call = state.incomingCall;
+  hideIncomingModal();
+  state.incomingCall = null;
+  // 不强制切页：在其他菜单页接听后，通话信息与挂断操作在顶部话务条展示
+  state.agentStatus = 'in-call';
+  state.callSeconds = 0;
+  state.transcriptIndex = 0;
+  state.activeCall = {
+    ...call,
+    startTime: new Date(),
+    transcript: [],
+    direction: 'in'
+  };
+  updateAgentStatus();
+  updateCallControls();
+  renderCurrentConnection();
+  startCallTimer();
+  updateTopbar();
+  showToast('通话已接通');
+}
+
+function declineIncoming() {
+  if (!state.incomingCall) return;
+  const call = state.incomingCall;
+  hideIncomingModal();
+  state.incomingCall = null;
+  state.agentStatus = 'idle';
+  updateAgentStatus();
+  addToHistory({
+    type: 'missed', name: call.name, number: call.number,
+    time: formatTime(new Date()), duration: '--', status: '未接', direction: 'in'
+  });
+  updateTopbar();
+  showToast('已拒接来电');
+}
+
+function autoMissCall() {
+  if (!state.incomingCall) return;
+  const call = state.incomingCall;
+  hideIncomingModal();
+  state.incomingCall = null;
+  state.agentStatus = 'idle';
+  updateAgentStatus();
+  addToHistory({
+    type: 'missed', name: call.name, number: call.number,
+    time: formatTime(new Date()), duration: '--', status: '未接', direction: 'in'
+  });
+  updateTopbar();
+  showToast('来电未接，已记入通话记录');
+}
+
+// ===== 通话计时 =====
+function startCallTimer() {
+  state.callTimer = setInterval(() => {
+    state.callSeconds++;
+    updateCallTimerDisplay();
+  }, 1000);
+}
+
+function stopCallTimer() {
+  if (state.callTimer) {
+    clearInterval(state.callTimer);
+    state.callTimer = null;
+  }
+}
+
+function updateCallTimerDisplay() {
+  const s = formatDuration(state.callSeconds);
+  const el = document.getElementById('ccTimer');
+  if (el) el.textContent = s;
+  const topEl = document.getElementById('topTimer');
+  if (topEl) topEl.textContent = s;
+}
+
+function formatDuration(sec) {
+  const m = Math.floor(sec / 60).toString().padStart(2, '0');
+  const s = (sec % 60).toString().padStart(2, '0');
+  return m + ':' + s;
+}
+
+function formatTime(date) {
+  return date.getHours().toString().padStart(2, '0') + ':' + date.getMinutes().toString().padStart(2, '0');
+}
+
+// ===== 实时转写 =====
+function startTranscript() {
+  if (!state.activeCall || !state.activeCall.script) return;
+  state.transcriptIndex = 1; // idx=1 → guest[0], opening已单独添加
+  // 开场问候
+  setTimeout(() => addTranscriptLine('agent', '您好，这里是中远宾馆房务中心，请问有什么可以帮您？'), 1500);
+  scheduleNextTranscript();
+}
+
+function scheduleNextTranscript() {
+  const call = state.activeCall;
+  if (!call || !call.script) return;
+  const script = call.script;
+  const idx = state.transcriptIndex;
+
+  // 交替 guest / agent
+  const guestLines = script.guest;
+  const agentLines = script.agent;
+  const totalLines = guestLines.length + agentLines.length + 1; // +1 for opening
+
+  if (idx >= totalLines) {
+    // 对话结束，自动添加结束语
+    setTimeout(() => {
+      if (state.activeCall) {
+        addTranscriptLine('agent', '感谢您的来电，祝您入住愉快，再见。');
+      }
+    }, 2000);
+    return;
+  }
+
+  // idx 0 = opening (already added), idx 1 = guest[0], idx 2 = agent[0], ...
+  const adjustedIdx = idx - 1;
+  const isGuest = adjustedIdx % 2 === 0;
+  const lineIdx = Math.floor(adjustedIdx / 2);
+
+  let text, speaker;
+  if (isGuest) {
+    speaker = 'guest';
+    text = guestLines[lineIdx] || '';
+  } else {
+    speaker = 'agent';
+    text = agentLines[lineIdx] || '';
+  }
+
+  if (!text) {
+    state.transcriptIndex = totalLines;
+    scheduleNextTranscript();
+    return;
+  }
+
+  const delay = 2500 + Math.random() * 2000;
+  state.transcriptTimer = setTimeout(() => {
+    if (!state.activeCall) return;
+    showTypingIndicator(speaker);
+    setTimeout(() => {
+      if (!state.activeCall) return;
+      removeTypingIndicator();
+      addTranscriptLine(speaker, text);
+      state.transcriptIndex++;
+      scheduleNextTranscript();
+    }, 1200 + Math.random() * 800);
+  }, delay);
+}
+
+function showTypingIndicator(speaker) {
+  // 同步到当前连接转写区
+  [
+    ['ccTranscript', 'typingCc']
+  ].forEach(([cid, tid]) => {
+    const container = document.getElementById(cid);
+    if (!container) return;
+    const existing = document.getElementById(tid);
+    if (existing) existing.remove();
+    const div = document.createElement('div');
+    div.className = 'transcript-line ' + speaker;
+    div.id = tid;
+    const speakerName = speaker === 'guest' ? (state.activeCall ? state.activeCall.name : '客人') : '坐席';
+    div.innerHTML = '<div class="ts-speaker">' + speakerName + ' <span class="ts-time">正在输入...</span></div>' +
+      '<div class="ts-bubble" style="display:inline-block;"><span class="ts-typing"><span></span><span></span><span></span></span></div>';
+    container.appendChild(div);
+    container.scrollTop = container.scrollHeight;
+  });
+}
+
+function removeTypingIndicator() {
+  ['typingCc'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.remove();
+  });
+}
+
+function addTranscriptLine(speaker, text) {
+  const call = state.activeCall;
+  const speakerName = speaker === 'guest' ? (call ? call.name : '客人') : '坐席 0001';
+  const time = formatTime(new Date());
+  const html = '<div class="ts-speaker">' + speakerName + ' <span class="ts-time">' + time + '</span></div>' +
+    '<div class="ts-bubble">' + text + '</div>';
+  // 同步到当前连接转写区
+  ['ccTranscript'].forEach(cid => {
+    const container = document.getElementById(cid);
+    if (!container) return;
+    const div = document.createElement('div');
+    div.className = 'transcript-line ' + speaker;
+    div.innerHTML = html;
+    container.appendChild(div);
+    container.scrollTop = container.scrollHeight;
+  });
+  if (call) call.transcript.push({ speaker, text, time });
+}
+
+// ===== v5 与该联系人历史来往的通话记录（不展示当前这通；图标与通话记录模块一致） =====
+// 组装与该联系人的历史来往记录
+function buildContactRecords(call) {
+  if (!call) return [];
+  // 历史：优先该联系人自带 history；否则从全局通话记录按号码筛选
+  let hist = call.history || [];
+  if (hist.length === 0) {
+    hist = state.callHistory.filter(h => h.number === call.number).map(h => ({
+      direction: h.direction, status: h.status, time: h.time, duration: h.duration
+    }));
+  }
+  return hist;
+}
+
+// 渲染历史通话记录列表（页面 + 悬浮框同步）；来话/去话图标与右侧通话记录模块一致
+function renderContactRecords(container, call) {
+  if (!container) return;
+  const list = buildContactRecords(call);
+  if (!list || list.length === 0) {
+    container.innerHTML = '<div class="wb-empty">暂无与该联系人的历史通话记录</div>';
+    return;
+  }
+  container.innerHTML = list.map(r => {
+    const dirSvg = r.direction === 'in'
+      ? '<svg class="cc-dir-icon in" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/><line x1="12" y1="2" x2="12" y2="8"/><polyline points="8 4 12 8 16 4"/></svg>'
+      : '<svg class="cc-dir-icon out" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/><line x1="12" y1="22" x2="12" y2="16"/><polyline points="8 20 12 16 16 20"/></svg>';
+    return '<div class="cr-call">' + dirSvg +
+      '<span class="cc-status">' + r.status + '</span>' +
+      '<span class="cc-time">' + r.time + '</span>' +
+      '<span class="cc-dur">' + r.duration + '</span></div>';
+  }).join('');
+}
+
+// 重建连接面板后恢复通话记录
+function restoreContactRecords() {
+  const call = state.activeCall;
+  renderContactRecords(document.getElementById('ccCallRecords'), call);
+}
+
+function stopTranscript() {
+  if (state.transcriptTimer) {
+    clearTimeout(state.transcriptTimer);
+    state.transcriptTimer = null;
+  }
+}
+
+// ===== AI 接听模式（一期为占位按钮，二期接入后生效） =====
+const AI_BOT_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>';
+const AI_GEAR_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>';
+function toggleAiAnswer(kind) {
+  if (!state.aiAnswerMode) state.aiAnswerMode = { internal: false, external: false };
+  state.aiAnswerMode[kind] = !state.aiAnswerMode[kind];
+  const el = document.getElementById(kind === 'internal' ? 'aiModeIn' : 'aiModeEx');
+  if (el) el.classList.toggle('on', state.aiAnswerMode[kind]);
+  const name = kind === 'internal' ? '内线AI接听' : '外线AI接听';
+  showToast((state.aiAnswerMode[kind] ? '已开启' : '已关闭') + '「' + name + '」（AI 能力二期接入后生效）');
+}
+
+// 注入全局 AI 接听按钮图标并恢复上次状态（init 时调用）
+function initAiModeBar() {
+  ['aiModeIn', 'aiModeEx'].forEach(id => {
+    const btn = document.getElementById(id);
+    if (!btn) return;
+    const icon = btn.querySelector('.am-icon');
+    const set = btn.querySelector('.am-set');
+    if (icon) icon.innerHTML = AI_BOT_SVG;
+    if (set) set.innerHTML = AI_GEAR_SVG;
+    const kind = id === 'aiModeIn' ? 'internal' : 'external';
+    btn.classList.toggle('on', !!(state.aiAnswerMode && state.aiAnswerMode[kind]));
+  });
+}
+
+// ===== 当前连接渲染 =====
+function renderCurrentConnection() {
+  const container = document.getElementById('ccContent');
+  const call = state.activeCall;
+
+  if (!call) {
+    container.className = 'cc-idle';
+    container.innerHTML = '<div class="cc-idle-icon">' +
+      '<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5">' +
+      '<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>' +
+      '</svg></div>' +
+      '<div class="cc-idle-text">当前空闲</div>' +
+      '<div class="cc-idle-sub">等待来电或使用拨号盘发起呼叫</div>';
+    document.getElementById('ccStatusText').textContent = '当前空闲';
+    return;
+  }
+
+  container.className = 'cc-active';
+  let statusText = state.isConference ? '多方通话中' : '通话中';
+  if (state.transferState === 'dialing') statusText = '转接拨号中';
+  if (state.transferState === 'success') statusText = '转接成功';
+  document.getElementById('ccStatusText').textContent = statusText;
+
+  const typeLabel = state.isConference ? '多方通话' : (call.typeLabel || '来电');
+  const tagClass = state.isConference ? 'cc-caller-tag conf-tag' : 'cc-caller-tag';
+
+  // 构建参与方列表
+  let partiesHtml = '';
+  if (state.isConference && state.conferenceParties && state.conferenceParties.length > 0) {
+    partiesHtml = '<div class="cc-parties">' +
+      '<div class="party-chip party-host">' +
+        '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>' +
+        call.name + '（主叫）' +
+      '</div>';
+    state.conferenceParties.forEach((p, idx) => {
+      partiesHtml += '<div class="party-chip">' +
+        '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>' +
+        p.name + '（' + p.number + '）' +
+        '<span class="party-remove" onclick="event.stopPropagation();removeConferenceParty(' + idx + ')" title="移出通话">&#10005;</span>' +
+      '</div>';
+    });
+    partiesHtml += '</div>';
+  }
+
+  // 转接状态横幅
+  let transferBanner = '';
+  let actionsHtml = '';
+  if (state.transferState === 'dialing') {
+    transferBanner = '<div class="transfer-banner dialing">' +
+      '<span class="tb-spinner"></span>' +
+      '正在呼叫 ' + state.transferTarget.name + '（' + state.transferTarget.number + '），当前通话已保持...' +
+      '</div>';
+    actionsHtml = '<div class="cc-actions">' +
+      '<div class="cc-action-btn" onclick="cancelTransfer()"><span class="action-icon">&#10005;</span><span>取消转接</span></div>' +
+      '</div>';
+  } else if (state.transferState === 'success') {
+    transferBanner = '<div class="transfer-banner connected">' +
+      '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>' +
+      '转接成功，正在挂断...' +
+      '</div>';
+    actionsHtml = '<div class="cc-actions">' +
+      '<div class="cc-action-btn" style="opacity:0.5;cursor:default;"><span class="action-icon">&#10003;</span><span>转接成功</span></div>' +
+      '</div>';
+  } else {
+    actionsHtml = '<div class="cc-actions">' +
+      '<div class="cc-action-btn" onclick="parkCall()"><span class="action-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="9" y1="4" x2="9" y2="20"/><line x1="15" y1="4" x2="15" y2="20"/></svg></span><span>保持</span></div>' +
+      '<div class="cc-action-btn" onclick="openTransfer()"><span class="action-icon">&#8594;&#128222;</span><span>转接/三方</span></div>' +
+      '<div class="cc-action-btn" onclick="hangup()"><span class="action-icon" style="color:var(--danger);">&#128228;</span><span style="color:var(--danger);">挂断</span></div>' +
+      '</div>';
+  }
+
+  container.innerHTML =
+    '<div class="cc-caller-card">' +
+      '<div class="cc-caller-top">' +
+        '<div class="cc-caller-name">' + call.name +
+          '<span class="' + tagClass + '">' + typeLabel + '</span>' +
+          '<span class="cc-caller-number">' + call.number + '</span>' +
+        '</div>' +
+        '<div class="cc-timer" id="ccTimer">' + formatDuration(state.callSeconds) + '</div>' +
+      '</div>' +
+      partiesHtml +
+      '<div class="cc-caller-meta">' +
+        '<div class="meta-item"><span class="meta-label">房间</span><span class="meta-value">' + call.room + '</span></div>' +
+        '<div class="meta-item"><span class="meta-label">等级</span><span class="meta-value">' + call.level + '</span></div>' +
+        '<div class="meta-item"><span class="meta-label">接听</span><span class="meta-value">' + formatTime(call.startTime) + '</span></div>' +
+        '<div class="meta-item"><span class="meta-label">方向</span><span class="meta-value">' + (call.direction === 'in' ? '呼入' : '呼出') + '</span></div>' +
+      '</div>' +
+      transferBanner +
+    '</div>' +
+    '<div class="cc-records">' +
+      '<div class="cr-block svc-block" id="ccSvcBlock" style="display:none;">' +
+        '<div class="wb-title">服务记录 <span class="wb-badge">在住期间</span></div>' +
+        '<div class="svc-list" id="ccSvcList"></div>' +
+      '</div>' +
+      '<div class="cr-block" style="flex:1;display:flex;flex-direction:column;min-height:0;">' +
+        '<div class="wb-title">历史通话记录 <span class="wb-badge">与对方来往</span></div>' +
+        '<div class="cr-call-list" id="ccCallRecords"></div>' +
+      '</div>' +
+    '</div>' +
+    actionsHtml;
+  // 重建连接面板后渲染服务记录 + 恢复与该联系人的通话记录 + 同步常驻话务条
+  renderServiceRecords();
+  restoreContactRecords();
+  renderTopbarCall();
+}
+
+// ===== v3 服务记录渲染（内线客房在住服务，字段参考任务中心：类型/状态/物品/时间） =====
+function renderServiceRecords() {
+  const call = state.activeCall;
+  const isRoomGuest = call && call.category === 'guest' && call.room && call.room !== '--';
+  const ccBlock = document.getElementById('ccSvcBlock');
+  if (ccBlock) {
+    ccBlock.style.display = isRoomGuest ? 'block' : 'none';
+    if (isRoomGuest) renderSvcList(document.getElementById('ccSvcList'), call.services || []);
+  }
+}
+
+function renderSvcList(container, services) {
+  if (!container) return;
+  if (!services || services.length === 0) {
+    container.innerHTML = '<div class="wb-empty">暂无服务记录</div>';
+    return;
+  }
+  container.innerHTML = services.map(s => {
+    const cls = s.status === 'done' ? 'done' : 'doing';
+    const label = s.status === 'done' ? '已完成' : '进行中';
+    return '<div class="svc-item">' +
+      '<span class="svc-icon">' + s.icon + '</span>' +
+      '<div class="svc-main">' +
+        '<div class="svc-name">' + s.name + ' <span class="svc-status ' + cls + '">' + label + '</span></div>' +
+        '<div class="svc-detail">' + s.detail + '</div>' +
+      '</div>' +
+      '<span class="svc-time">' + s.time + '</span>' +
+    '</div>';
+  }).join('');
+}
+
+// ===== 通话控制 =====
+function hangup() {
+  // 转接成功状态下挂断 = 完成转接
+  if (state.transferState === 'success') {
+    completeTransfer();
+    return;
+  }
+  // 转接拨号中挂断 = 取消转接并挂断
+  if (state.transferState === 'dialing') {
+    state.transferState = null;
+    state.transferTarget = null;
+  }
+  // 呼出振铃中取消
+  if (state.isOutboundRinging) {
+    state.isOutboundRinging = false;
+    state.agentStatus = 'idle';
+    updateAgentStatus();
+    updateCallControls();
+    updateTopbar();
+    showToast('已取消呼叫');
+    return;
+  }
+  if (!state.activeCall) return;
+  const call = state.activeCall;
+  stopCallTimer();
+  stopTranscript();
+  removeTypingIndicator();
+
+  addToHistory({
+    type: call.direction === 'in' ? 'answered' : 'outbound',
+    name: call.name, number: call.number,
+    time: formatTime(call.startTime),
+    duration: formatDuration(state.callSeconds),
+    status: call.direction === 'in' ? '已接' : '已拨',
+    direction: call.direction
+  });
+
+  state.activeCall = null;
+  state.agentStatus = 'idle';
+  state.isConference = false;
+  state.conferenceParties = [];
+  state.transferState = null;
+  state.transferTarget = null;
+  state.isOutboundRinging = false;
+  state.callSeconds = 0;
+  updateAgentStatus();
+  updateCallControls();
+  renderCurrentConnection();
+  updateTopbar();
+
+  // 检查队列中是否有等待的来电
+  checkQueueForNextCall();
+  showToast('通话已结束');
+}
+
+function parkCall() {
+  if (!state.activeCall) return;
+  const call = state.activeCall;
+  stopCallTimer();
+  stopTranscript();
+  removeTypingIndicator();
+
+  // 保存通话到驻留队列
+  const parkItem = {
+    ...call,
+    parkSeconds: state.callSeconds,
+    parkNumber: 701 + state.parkQueue.length,
+    parkTime: new Date()
+  };
+  state.parkQueue.push(parkItem);
+
+  state.activeCall = null;
+  state.agentStatus = 'idle';
+  state.isConference = false;
+  state.conferenceParties = [];
+  state.callSeconds = 0;
+  updateAgentStatus();
+  updateCallControls();
+  renderCurrentConnection();
+  renderParkQueue();
+  updateTopbar();
+  showToast('通话已驻留，驻留号 ' + parkItem.parkNumber + '，挂断后可恢复');
+}
+
+function retrievePark(index) {
+  if (state.agentStatus !== 'idle') {
+    showToast('请先结束当前通话');
+    return;
+  }
+  const parkItem = state.parkQueue.splice(index, 1)[0];
+  renderParkQueue();
+
+  state.activeCall = {
+    ...parkItem,
+    startTime: parkItem.startTime
+  };
+  state.callSeconds = parkItem.parkSeconds;
+  state.agentStatus = 'in-call';
+  state.isConference = false;
+  state.conferenceParties = [];
+  updateAgentStatus();
+  updateCallControls();
+  renderCurrentConnection();
+
+  // 恢复驻留通话时：服务记录与该联系人的通话记录随通话保留，自动重新渲染
+  renderServiceRecords();
+  restoreContactRecords();
+
+  startCallTimer();
+  updateTopbar();
+  showToast('已恢复驻留通话，服务记录与通话记录已保留');
+}
+
+function openTransfer() {
+  if (!state.activeCall) return;
+  state.tfMode = 'transfer';
+  state.tfSelected = null;
+  document.getElementById('tfCurrentCaller').textContent = state.activeCall.name + '（' + state.activeCall.number + '）';
+  document.getElementById('tfSearchInput').value = '';
+  document.getElementById('tfManualNumber').value = '';
+  setTfMode('transfer');
+  renderTransferContacts();
+  document.getElementById('transferOverlay').style.display = 'flex';
+}
+
+function closeTransfer() {
+  document.getElementById('transferOverlay').style.display = 'none';
+  state.tfSelected = null;
+}
+
+function setTfMode(mode) {
+  state.tfMode = mode;
+  state.tfSelected = mode === 'conference' ? [] : null;
+  document.getElementById('tfTabTransfer').classList.toggle('active', mode === 'transfer');
+  document.getElementById('tfTabConference').classList.toggle('active', mode === 'conference');
+  document.getElementById('tfManualNumber').value = '';
+  const btn = document.getElementById('tfBtnConfirm');
+  btn.textContent = mode === 'transfer' ? '确认转接' : '加入三方通话';
+  btn.className = mode === 'transfer' ? 'btn-transfer-confirm' : 'btn-conference-confirm';
+  btn.disabled = true;
+  document.getElementById('tfSelected').style.display = 'none';
+  renderTransferContacts();
+}
+
+function renderTransferContacts() {
+  const keyword = document.getElementById('tfSearchInput').value.trim().toLowerCase();
+  const list = document.getElementById('tfContactList');
+  let filtered = state.contacts;
+  if (keyword) {
+    filtered = state.contacts.filter(c =>
+      c.name.toLowerCase().includes(keyword) ||
+      c.dept.toLowerCase().includes(keyword) ||
+      (c.ext && c.ext.includes(keyword)) ||
+      (c.phone && c.phone.includes(keyword))
+    );
+  }
+  if (filtered.length === 0) {
+    list.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-muted);font-size:12px;">无匹配联系人</div>';
+    return;
+  }
+  const isConf = state.tfMode === 'conference';
+  list.innerHTML = filtered.map((c, i) => {
+    const num = c.ext || c.phone || '';
+    let isSelected = false;
+    if (isConf) {
+      isSelected = state.tfSelected.some(s => s.number === num);
+    } else {
+      isSelected = state.tfSelected && state.tfSelected.number === num;
+    }
+    const checkbox = isConf ? '<div class="tf-checkbox"></div>' : '';
+    return '<div class="tf-contact-item ' + (isSelected ? 'selected' : '') + '" onclick="selectTransferContact(\'' + c.name.replace(/'/g, "\\'") + '\', \'' + c.dept + '\', \'' + num + '\')">' +
+      '<div class="tf-contact-left">' + checkbox +
+        '<div class="tf-contact-info">' +
+          '<span class="tf-contact-name">' + c.name + '</span>' +
+          '<span class="tf-contact-dept">' + c.dept + ' · ' + c.position + '</span>' +
+        '</div>' +
+      '</div>' +
+      '<span class="tf-contact-num">' + num + '</span>' +
+      '</div>';
+  }).join('');
+}
+
+function selectTransferContact(name, dept, number) {
+  const isConf = state.tfMode === 'conference';
+  document.getElementById('tfManualNumber').value = '';
+  if (isConf) {
+    const idx = state.tfSelected.findIndex(s => s.number === number);
+    if (idx >= 0) {
+      state.tfSelected.splice(idx, 1);
+    } else {
+      state.tfSelected.push({ name: name, dept: dept, number: number });
+    }
+  } else {
+    state.tfSelected = { name: name, dept: dept, number: number };
+  }
+  updateTfSelectionUI();
+  renderTransferContacts();
+}
+
+function onTfManualInput() {
+  const val = document.getElementById('tfManualNumber').value.trim();
+  const isConf = state.tfMode === 'conference';
+  if (val) {
+    if (isConf) {
+      // 三方模式下手动输入也加入选择
+      if (!state.tfSelected.some(s => s.number === val)) {
+        state.tfSelected.push({ name: '手动输入', dept: '', number: val });
+      }
+    } else {
+      state.tfSelected = { name: '手动输入', dept: '', number: val };
+    }
+    document.querySelectorAll('.tf-contact-item').forEach(el => el.classList.remove('selected'));
+  } else {
+    if (isConf) {
+      state.tfSelected = state.tfSelected.filter(s => s.name !== '手动输入');
+    } else if (state.tfSelected && state.tfSelected.name === '手动输入') {
+      state.tfSelected = null;
+    }
+  }
+  updateTfSelectionUI();
+}
+
+function updateTfSelectionUI() {
+  const isConf = state.tfMode === 'conference';
+  const selEl = document.getElementById('tfSelected');
+  const btn = document.getElementById('tfBtnConfirm');
+  const hasSelection = isConf ? state.tfSelected.length > 0 : !!state.tfSelected;
+  if (hasSelection) {
+    selEl.style.display = 'block';
+    if (isConf) {
+      const names = state.tfSelected.map(s => s.name + '（' + s.number + '）').join('、');
+      document.getElementById('tfSelectedText').innerHTML = '已选 <b>' + state.tfSelected.length + '</b> 人：' + names;
+    } else {
+      document.getElementById('tfSelectedText').innerHTML = '已选择：<span class="tf-selected-name">' + state.tfSelected.name + '</span> <span class="tf-selected-number">' + state.tfSelected.number + '</span>';
+    }
+    btn.disabled = false;
+  } else {
+    selEl.style.display = 'none';
+    btn.disabled = true;
+  }
+}
+
+function confirmTfAction() {
+  if (state.tfMode === 'conference') {
+    doConference();
+  } else {
+    doTransfer();
+  }
+}
+
+function doTransfer() {
+  if (!state.tfSelected) return;
+  const target = state.tfSelected;
+  closeTransfer();
+  state.transferState = 'dialing';
+  state.transferTarget = target;
+  renderCurrentConnection();
+  showToast('正在呼叫 ' + target.name + '...');
+
+  // 模拟1.8秒后判断转接结果（85%成功率）
+  setTimeout(() => {
+    if (!state.activeCall || state.transferState !== 'dialing') return;
+    const success = Math.random() < 0.85;
+    if (success) {
+      state.transferState = 'success';
+      renderCurrentConnection();
+      showToast('转接成功，2秒后自动挂断');
+      // 2秒后自动完成转接（挂断坐席）
+      setTimeout(() => {
+        if (state.activeCall && state.transferState === 'success') {
+          completeTransfer();
+        }
+      }, 2000);
+    } else {
+      // 转接失败：回收通话，恢复原通话
+      state.transferState = null;
+      state.transferTarget = null;
+      renderCurrentConnection();
+      showToast('转接失败，已恢复通话');
+    }
+  }, 1800);
+}
+
+function cancelTransfer() {
+  if (!state.activeCall || !state.transferState) return;
+  state.transferState = null;
+  state.transferTarget = null;
+  renderCurrentConnection();
+  showToast('转接已取消');
+}
+
+function completeTransfer() {
+  if (!state.activeCall || !state.transferState) return;
+  const call = state.activeCall;
+  const target = state.transferTarget;
+  stopCallTimer();
+  stopTranscript();
+  removeTypingIndicator();
+
+  addToHistory({
+    type: 'transferred', name: call.name, number: call.number,
+    time: formatTime(call.startTime),
+    duration: formatDuration(state.callSeconds),
+    status: '转接至' + target.name, direction: call.direction || 'in'
+  });
+
+  state.activeCall = null;
+  state.agentStatus = 'idle';
+  state.isConference = false;
+  state.conferenceParties = [];
+  state.transferState = null;
+  state.transferTarget = null;
+  state.isOutboundRinging = false;
+  state.callSeconds = 0;
+  updateAgentStatus();
+  renderCurrentConnection();
+  updateTopbar();
+  checkQueueForNextCall();
+  showToast('通话已转接至 ' + target.name);
+}
+
+function doConference() {
+  if (!state.tfSelected || state.tfSelected.length === 0) return;
+  const targets = [...state.tfSelected];
+  closeTransfer();
+  state.isConference = true;
+  if (!state.conferenceParties) state.conferenceParties = [];
+
+  // 依次拨打并加入，每人间隔1.5秒
+  targets.forEach((target, idx) => {
+    setTimeout(() => {
+      if (!state.activeCall) return;
+      // 避免重复加入
+      if (state.conferenceParties.some(p => p.number === target.number)) return;
+      state.conferenceParties.push({
+        name: target.name,
+        number: target.number,
+        typeLabel: target.dept ? '内线' : '外线',
+        joinTime: new Date()
+      });
+      showToast(target.name + ' 已加入通话');
+      renderCurrentConnection();
+      if (idx === targets.length - 1) {
+        showToast('已加入 ' + targets.length + ' 人，开始多方通话');
+      }
+    }, 1500 * (idx + 1));
+  });
+  showToast('正在邀请 ' + targets.length + ' 人加入通话...');
+}
+
+function removeConferenceParty(idx) {
+  if (!state.conferenceParties || !state.conferenceParties[idx]) return;
+  const removed = state.conferenceParties.splice(idx, 1)[0];
+  showToast(removed.name + ' 已离开通话');
+  if (state.conferenceParties.length === 0) {
+    state.isConference = false;
+  }
+  renderCurrentConnection();
+  showToast(removed.name + ' 已移出通话');
+}
+
+function checkQueueForNextCall() {
+  if (state.callQueue.length > 0 && state.agentStatus === 'idle') {
+    const next = state.callQueue.shift();
+    renderCallQueue();
+    state.incomingCall = next;
+    state.agentStatus = 'ringing';
+    state.incomingWaitSeconds = 0;
+    updateAgentStatus();
+    showIncomingModal();
+    updateTopbar();
+    state.incomingWaitTimer = setInterval(() => {
+      state.incomingWaitSeconds++;
+      const el = document.getElementById('incWait');
+      if (el) el.textContent = state.incomingWaitSeconds + 's';
+      if (state.incomingWaitSeconds >= 15) autoMissCall();
+    }, 1000);
+  }
+}
+
+function updateCallControls() {
+  // 拨号盘下方控制按钮已移除，通话控制统一在当前连接操作栏
+}
+
+function updateAgentStatus() {
+  const badge = document.getElementById('agentStatusBadge');
+  const text = document.getElementById('agentStatusText');
+  badge.className = 'console-status-badge';
+  switch (state.agentStatus) {
+    case 'offline': badge.classList.add('status-offline'); text.textContent = '未签入'; break;
+    case 'idle': badge.classList.add('status-idle'); text.textContent = '空闲'; break;
+    case 'ringing': badge.classList.add('status-ringing'); text.textContent = '振铃中'; break;
+    case 'in-call': badge.classList.add('status-incall'); text.textContent = '通话中'; break;
+    case 'on-hold': badge.classList.add('status-hold'); text.textContent = '保留中'; break;
+  }
+}
+
+// ===== 呼叫队列 =====
+function renderCallQueue() {
+  const container = document.getElementById('callQueueList');
+  document.getElementById('callQueueCount').textContent = state.callQueue.length;
+  if (state.callQueue.length === 0) {
+    container.innerHTML = '<div class="queue-empty">暂无等待来电</div>';
+    return;
+  }
+  container.innerHTML = state.callQueue.map((item, i) => {
+    const typeClass = item.type === 'room' ? 'type-room' : item.type === 'external' ? 'type-external' : 'type-internal';
+    const wait = Math.floor((Date.now() - item.waitStart) / 1000);
+    return '<div class="queue-item incoming" onclick="pickFromQueue(' + i + ')">' +
+      '<div class="qi-number">' + (i + 1) + '</div>' +
+      '<div class="qi-top"><span class="qi-name">' + item.name + '</span>' +
+      '<span class="qi-type ' + typeClass + '">' + item.typeLabel + '</span></div>' +
+      '<div class="qi-info">' + item.number + (item.room !== '--' ? ' | 房间 ' + item.room : '') + '</div>' +
+      '<div class="qi-wait">已等待 ' + wait + 's</div></div>';
+  }).join('');
+}
+
+function pickFromQueue(index) {
+  if (!state.signedIn) { showToast('请先签入后再接听'); return; }
+  if (state.agentStatus !== 'idle') {
+    showToast('请先结束当前通话');
+    return;
+  }
+  const call = state.callQueue.splice(index, 1)[0];
+  renderCallQueue();
+  state.incomingCall = call;
+  state.agentStatus = 'ringing';
+  state.incomingWaitSeconds = 0;
+  updateAgentStatus();
+  showIncomingModal();
+  updateTopbar();
+  state.incomingWaitTimer = setInterval(() => {
+    state.incomingWaitSeconds++;
+    const el = document.getElementById('incWait');
+    if (el) el.textContent = state.incomingWaitSeconds + 's';
+    if (state.incomingWaitSeconds >= 15) autoMissCall();
+  }, 1000);
+}
+
+// 驻留队列
+function renderParkQueue() {
+  const container = document.getElementById('parkQueueList');
+  document.getElementById('parkQueueCount').textContent = state.parkQueue.length;
+  if (state.parkQueue.length === 0) {
+    container.innerHTML = '<div class="queue-empty">暂无驻留通话</div>';
+    return;
+  }
+  container.innerHTML = state.parkQueue.map((item, i) => {
+    const typeClass = item.type === 'external' ? 'type-external' : 'type-internal';
+    const waited = Math.floor((Date.now() - item.parkTime) / 1000);
+    return '<div class="queue-item" onclick="retrievePark(' + i + ')">' +
+      '<div class="qi-number">' + (i + 1) + '</div>' +
+      '<div class="qi-top"><span class="qi-name">' + item.name + '</span>' +
+      '<span class="qi-type ' + typeClass + '">' + item.typeLabel + '</span></div>' +
+      '<div class="qi-info">' + item.number + ' | 已等待 ' + formatDuration(waited) + '</div>' +
+      '<div class="qi-wait">通话时长 ' + formatDuration(item.parkSeconds) + ' · 点击恢复</div></div>';
+  }).join('');
+}
+
+// ===== 通话记录 =====
+function addToHistory(record) {
+  state.callHistory.unshift(record);
+  if (state.callHistory.length > 50) state.callHistory.pop();
+  renderHistory();
+}
+
+function renderHistory() {
+  const container = document.getElementById('historyList');
+  let filtered = state.callHistory;
+  if (state.historyFilter !== 'all') {
+    filtered = filtered.filter(h => h.type === state.historyFilter);
+  }
+  if (state.historySearch) {
+    const q = state.historySearch.toLowerCase();
+    filtered = filtered.filter(h => h.name.toLowerCase().includes(q) || h.number.includes(q));
+  }
+  if (filtered.length === 0) {
+    container.innerHTML = '<div class="queue-empty">暂无通话记录</div>';
+    return;
+  }
+  const statusClass = {
+    '已接': 'status-answered', '已拨': 'status-outbound',
+    '转接': 'status-transferred', '未接': 'status-missed'
+  };
+  container.innerHTML = filtered.map(h => {
+    const sc = statusClass[h.status] || 'status-answered';
+    const dirSvg = h.direction === 'in'
+      ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:5px;"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/><line x1="12" y1="2" x2="12" y2="8"/><polyline points="8 4 12 8 16 4"/></svg>'
+      : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1a73e8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:5px;"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/><line x1="12" y1="22" x2="12" y2="16"/><polyline points="8 20 12 16 16 20"/></svg>';
+    return '<div class="history-item" onclick="callFromHistory(\'' + h.number.replace(/'/g, "\\'") + '\',\'' + h.name.replace(/'/g, "\\'") + '\')">' +
+      '<div class="hi-top"><span class="hi-name">' + dirSvg + h.name + '</span>' +
+      '<span class="hi-status ' + sc + '">' + h.status + '</span></div>' +
+      '<div class="hi-bottom"><span>' + h.number + '</span><span>' + h.time + ' | ' + h.duration + '</span></div></div>';
+  }).join('');
+}
+
+function filterHistory() {
+  state.historySearch = document.getElementById('historySearchInput').value;
+  renderHistory();
+}
+
+document.addEventListener('click', function(e) {
+  if (e.target.classList.contains('history-tab')) {
+    document.querySelectorAll('.history-tab').forEach(t => t.classList.remove('active'));
+    e.target.classList.add('active');
+    state.historyFilter = e.target.dataset.filter;
+    renderHistory();
+  }
+});
+
+function callFromHistory(number, name) {
+  state.dialNumber = number.replace(/\D/g, '').slice(0, 12);
+  document.getElementById('dialDisplay').textContent = state.dialNumber || '\u00A0';
+  showToast('已填入拨号盘：' + name + '（' + number + '）');
+}
+
+function focusDialPad() {
+  document.getElementById('dialDisplay').scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+// ===== 通讯录 =====
+function renderContactsTree() {
+  const container = document.getElementById('contactsTree');
+  const totalCount = state.contacts.length;
+  let html = '<div class="tree-root ' + (state.selectedDept === 'all' ? 'active' : '') + '" onclick="selectDept(\'all\')">' +
+    '<svg class="tree-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M5 21V7l8-4v18M19 21V11l-6-4"/></svg>' +
+    '<span>中远宾馆</span>' +
+    '<span class="dept-count" style="margin-left:auto;">' + totalCount + '</span>' +
+    '</div>';
+
+  deptTree[0].children.forEach(dept => {
+    const count = state.contacts.filter(c => c.dept === dept.name).length;
+    const isActive = state.selectedDept === dept.name;
+    const isExpanded = !!state.expandedDepts[dept.name];
+    const hasChildren = dept.children && dept.children.length > 0;
+    const arrow = hasChildren ? (isExpanded ? '&#9660;' : '&#9654;') : '';
+
+    html += '<div class="tree-dept ' + (isActive ? 'active' : '') + '">' +
+      '<span class="dept-left" onclick="selectDept(\'' + dept.name + '\')">' +
+        (hasChildren ? '<span class="tree-arrow" onclick="event.stopPropagation();toggleDept(\'' + dept.name + '\')">' + arrow + '</span>' : '<span class="tree-arrow-placeholder"></span>') +
+        '<svg class="dept-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-6h6v6"/></svg>' +
+        dept.name +
+      '</span>' +
+      '<span class="dept-count">' + count + '</span>' +
+      '</div>';
+
+    if (isExpanded && hasChildren) {
+      html += '<div class="tree-groups">';
+      dept.children.forEach(group => {
+        const groupCount = state.contacts.filter(c => c.dept === dept.name && c.group === group.name).length;
+        const groupKey = dept.name + '|' + group.name;
+        const isGroupActive = state.selectedDept === groupKey;
+        html += '<div class="tree-group ' + (isGroupActive ? 'active' : '') + '" onclick="selectDept(\'' + groupKey + '\')">' +
+          '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v6m0 10v6m11-11h-6M7 12H1"/></svg>' +
+          '<span>' + group.name + '</span>' +
+          '<span class="dept-count">' + groupCount + '</span>' +
+          '</div>';
+      });
+      html += '</div>';
+    }
+  });
+  container.innerHTML = html;
+}
+
+function toggleDept(deptName) {
+  state.expandedDepts[deptName] = !state.expandedDepts[deptName];
+  renderContactsTree();
+}
+
+function selectDept(dept) {
+  state.selectedDept = dept;
+  state.contactPage = 1;
+  renderContactsTree();
+  renderContacts();
+}
+
+function renderContacts() {
+  const search = document.getElementById('contactSearchInput').value;
+  const filter = document.querySelector('input[name="contactFilter"]:checked').value;
+  state.contactSearch = search;
+  state.contactFilter = filter;
+
+  let list = state.contacts;
+  if (filter === 'favorite') {
+    list = list.filter(c => c.favorite);
+  }
+  if (state.selectedDept !== 'all') {
+    if (state.selectedDept.includes('|')) {
+      const parts = state.selectedDept.split('|');
+      list = list.filter(c => c.dept === parts[0] && c.group === parts[1]);
+    } else {
+      list = list.filter(c => c.dept === state.selectedDept);
+    }
+  }
+  if (search) {
+    const q = search.toLowerCase();
+    list = list.filter(c => c.name.toLowerCase().includes(q) || c.ext.includes(q));
+  }
+
+  // 更新总数
+  document.getElementById('contactsTotal').textContent = '共 ' + list.length + ' 条';
+
+  // 分页
+  const totalPages = Math.max(1, Math.ceil(list.length / state.contactPageSize));
+  if (state.contactPage > totalPages) state.contactPage = totalPages;
+  const start = (state.contactPage - 1) * state.contactPageSize;
+  const pageList = list.slice(start, start + state.contactPageSize);
+
+  const tbody = document.getElementById('contactsTableBody');
+  if (pageList.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--text-muted);">暂无联系人</td></tr>';
+  } else {
+    tbody.innerHTML = pageList.map((c, i) => {
+      const realIndex = state.contacts.indexOf(c);
+      const seq = start + i + 1;
+      const starClass = c.favorite ? 'star-on' : 'star-off';
+      const starChar = c.favorite ? '&#9733;' : '&#9734;';
+      const extCell = c.ext
+        ? '<span class="cell-text">' + c.ext + '</span><span class="copy-icon" onclick="copyNumber(\'' + c.ext + '\')" title="填入拨号盘">&#128203;</span>'
+        : '--';
+      const phoneCell = c.phone
+        ? '<span class="cell-text">' + c.phone + '</span><span class="copy-icon" onclick="copyNumber(\'' + c.phone + '\')" title="填入拨号盘">&#128203;</span>'
+        : '--';
+      return '<tr>' +
+        '<td class="star-cell ' + starClass + '" onclick="toggleFavorite(' + realIndex + ')" title="' + (c.favorite ? '取消收藏' : '收藏') + '">' + starChar + '</td>' +
+        '<td class="num-cell">' + seq + '</td>' +
+        '<td>' + c.type + '</td>' +
+        '<td>' + c.name + '</td>' +
+        '<td>' + extCell + '</td>' +
+        '<td>' + phoneCell + '</td>' +
+        '<td>' + (c.position || '--') + '</td>' +
+        '</tr>';
+    }).join('');
+  }
+
+  // 渲染分页
+  renderPagination(list.length, totalPages);
+}
+
+function renderPagination(total, totalPages) {
+  const container = document.getElementById('contactsPagination');
+  if (total <= state.contactPageSize) {
+    container.innerHTML = '<span class="pagination-info">共 ' + total + ' 条</span><span></span>';
+    return;
+  }
+  const cur = state.contactPage;
+  let pageBtns = '';
+  // 页码按钮：最多显示5个
+  let startPage = Math.max(1, cur - 2);
+  let endPage = Math.min(totalPages, startPage + 4);
+  if (endPage - startPage < 4) startPage = Math.max(1, endPage - 4);
+  for (let p = startPage; p <= endPage; p++) {
+    pageBtns += '<button class="' + (p === cur ? 'page-active' : '') + '" onclick="goContactPage(' + p + ')">' + p + '</button>';
+  }
+  container.innerHTML =
+    '<span class="pagination-info">第 ' + cur + ' / ' + totalPages + ' 页，共 ' + total + ' 条</span>' +
+    '<span class="pagination-btns">' +
+      '<button onclick="goContactPage(' + (cur - 1) + ')" ' + (cur <= 1 ? 'disabled' : '') + '>上一页</button>' +
+      pageBtns +
+      '<button onclick="goContactPage(' + (cur + 1) + ')" ' + (cur >= totalPages ? 'disabled' : '') + '>下一页</button>' +
+      '<span>跳至</span>' +
+      '<input type="number" class="page-jump" id="pageJumpInput" min="1" max="' + totalPages + '" onkeydown="if(event.key===\'Enter\')jumpContactPage()">' +
+      '<button onclick="jumpContactPage()">GO</button>' +
+    '</span>';
+}
+
+function goContactPage(page) {
+  state.contactPage = page;
+  renderContacts();
+}
+
+function resetContactPage() {
+  state.contactPage = 1;
+  renderContacts();
+}
+
+function jumpContactPage() {
+  const input = document.getElementById('pageJumpInput');
+  const val = parseInt(input.value);
+  if (val && val >= 1) {
+    state.contactPage = val;
+    renderContacts();
+  }
+}
+
+function toggleFavorite(index) {
+  state.contacts[index].favorite = !state.contacts[index].favorite;
+  renderContacts();
+  showToast(state.contacts[index].favorite ? '已收藏' : '已取消收藏');
+}
+
+function callContact(ext, name) {
+  if (state.agentStatus !== 'idle') {
+    showToast('请先结束当前通话');
+    return;
+  }
+  state.dialNumber = ext;
+  document.getElementById('dialDisplay').textContent = ext;
+  showToast('已选择 ' + name + '（' + ext + '），点击呼叫按钮拨打');
+}
+
+// ===== 拨号盘 =====
+function dialPress(key) {
+  if (state.dialNumber.length >= 12) return;
+  state.dialNumber += key;
+  document.getElementById('dialDisplay').textContent = state.dialNumber || '\u00A0';
+}
+
+function dialClear() {
+  state.dialNumber = '';
+  document.getElementById('dialDisplay').innerHTML = '\u00A0';
+}
+
+function dialBackspace() {
+  state.dialNumber = state.dialNumber.slice(0, -1);
+  document.getElementById('dialDisplay').textContent = state.dialNumber || '\u00A0';
+}
+
+function pasteToDial() {
+  if (navigator.clipboard && navigator.clipboard.readText) {
+    navigator.clipboard.readText().then(text => {
+      const cleaned = text.replace(/[^0-9*#]/g, '');
+      if (cleaned) {
+        state.dialNumber = (state.dialNumber + cleaned).slice(0, 12);
+        document.getElementById('dialDisplay').textContent = state.dialNumber;
+        showToast('已粘贴号码');
+      } else {
+        showToast('剪贴板中没有有效号码');
+      }
+    }).catch(() => {
+      showToast('无法读取剪贴板，请手动输入');
+    });
+  } else {
+    showToast('浏览器不支持自动粘贴，请手动输入');
+  }
+}
+
+function copyNumber(num) {
+  if (!num || num === '--') return;
+  // 直接填入拨号盘
+  state.dialNumber = num.replace(/\D/g, '').slice(0, 12);
+  document.getElementById('dialDisplay').textContent = state.dialNumber || '\u00A0';
+  showToast('已填入拨号盘：' + num);
+}
+
+// 键盘支持（仅在话务台页面生效）
+document.addEventListener('keydown', function(e) {
+  if (state.currentMenu !== 'console') return;
+  if (e.target.tagName === 'INPUT') return;
+  if (e.key >= '0' && e.key <= '9') dialPress(e.key);
+  else if (e.key === '*' || e.key === '#') dialPress(e.key);
+  else if (e.key === 'Backspace') dialBackspace();
+  else if (e.key === 'Enter' && state.agentStatus === 'idle' && state.dialNumber) makeOutboundCall();
+  else if (e.key === 'Escape' && state.agentStatus === 'ringing') declineIncoming();
+});
+
+function makeOutboundCall() {
+  if (!state.signedIn) { showToast('请先签入后再拨打'); return; }
+  if (state.agentStatus !== 'idle') return;
+  if (!state.dialNumber) {
+    showToast('请先输入号码');
+    return;
+  }
+  // 查找联系人（内线客房号码优先从在住客人表匹配，用于展示房间/等级/服务记录）
+  const guest = hotelGuests.find(g => g.number === state.dialNumber);
+  const contact = state.contacts.find(c => c.ext === state.dialNumber);
+  const name = contact ? contact.name : (guest ? guest.name : '外线号码');
+  const number = state.dialNumber;
+
+  state.agentStatus = 'ringing';
+  state.isOutboundRinging = true;
+  updateAgentStatus();
+  updateCallControls();
+  showToast('正在呼叫 ' + name + '（' + number + '）...');
+
+  // 模拟2秒后接通
+  setTimeout(() => {
+    if (state.agentStatus !== 'ringing') return;
+    state.isOutboundRinging = false;
+    state.agentStatus = 'in-call';
+    state.callSeconds = 0;
+    state.activeCall = {
+      id: Date.now(), name: name, number: number,
+      room: guest ? guest.room : '--', level: guest ? guest.level : '--',
+      type: 'internal', typeLabel: '内线', category: guest ? guest.category : 'staff',
+      services: guest ? guest.services : [],
+      history: guest ? guest.history : [],
+      startTime: new Date(), transcript: [], direction: 'out'
+    };
+    updateAgentStatus();
+    updateCallControls();
+    renderCurrentConnection();
+    startCallTimer();
+  }, 2000);
+}
+
+// ===== Toast =====
+function showToast(msg) {
+  const existing = document.querySelector('.toast');
+  if (existing) existing.remove();
+  const toast = document.createElement('div');
+  toast.className = 'toast';
+  toast.textContent = msg;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 2500);
+}
+
+// ===== 启动 =====
+init();
+
+// 队列等待时间刷新
+setInterval(() => {
+  if (state.callQueue.length > 0) renderCallQueue();
+  if (state.parkQueue.length > 0) {
+    state.parkQueue.forEach(p => p.parkSeconds++);
+    renderParkQueue();
+  }
+}, 1000);
+</script>
+</body>
+</html>
