@@ -883,7 +883,7 @@ table.atable{width:100%;table-layout:fixed;border-collapse:collapse;min-width:76
 .ex-count{font-size:12px;color:var(--text-3);white-space:nowrap}
 .ex-count b{color:var(--primary);font-weight:600;font-variant-numeric:tabular-nums}
 .ex-count b.zero{color:var(--text-2)}
-.ex-table{table-layout:fixed;min-width:1180px}
+.ex-table{table-layout:fixed;min-width:1300px}
 .ex-table th{white-space:nowrap;padding:12px 12px}
 .ex-table td{padding:10px 12px;font-size:13px}
 .ex-table tr.ex-row-on td{background:#F7FAFF}
@@ -894,6 +894,7 @@ table.atable{width:100%;table-layout:fixed;border-collapse:collapse;min-width:76
 .ex-user{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--text-2);white-space:nowrap}
 .ex-user .k{font-size:10px;color:var(--primary);background:var(--primary-soft);border:1px solid #DCE8FF;border-radius:4px;padding:0 5px;line-height:16px}
 .ex-muted{color:#C5CBD6}
+.ex-note{font-size:12.5px;line-height:1.5;color:#5A6A80;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;word-break:break-all}
 .ex-bind{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--text-3);white-space:nowrap}
 .ex-bind.on{color:var(--ok)}
 .ex-bind i{width:6px;height:6px;border-radius:50%;background:#C9D0DB}
@@ -940,7 +941,7 @@ table.atable{width:100%;table-layout:fixed;border-collapse:collapse;min-width:76
 .sync-foot-state.done{color:#15803D}
 @media (max-width:760px){
   .ex-sel-tools{width:100%}
-  .ex-table{min-width:1040px}
+  .ex-table{min-width:1120px}
 }
 </style>
 <script src="https://fastly.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
@@ -1728,15 +1729,15 @@ table.atable{width:100%;table-layout:fixed;border-collapse:collapse;min-width:76
         </div>
         <div class="card table-card">
           <div class="table-scroll">
-            <table class="atable ex-table" style="min-width:1180px">
+            <table class="atable ex-table" style="min-width:1300px">
               <colgroup>
-                <col style="width:3.5%"><col style="width:10%"><col style="width:16.5%"><col style="width:12%">
-                <col style="width:13%"><col style="width:8%"><col style="width:9%"><col style="width:9.5%"><col style="width:18.5%">
+                <col style="width:3.5%"><col style="width:8%"><col style="width:14%"><col style="width:10%">
+                <col style="width:11%"><col style="width:7%"><col style="width:13%"><col style="width:8.5%"><col style="width:8.5%"><col style="width:16.5%">
               </colgroup>
               <thead>
                 <tr>
                   <th class="ex-cbox-cell"><input class="ex-cbox" id="exHeadCk" type="checkbox" aria-label="选择本页全部分机"></th>
-                  <th>分机号</th><th>使用对象</th><th>终端设备</th><th>分机号别名</th><th>外机号</th><th>绑定状态</th><th>启用状态</th><th>操作</th>
+                  <th>分机号</th><th>使用对象</th><th>终端设备</th><th>分机号别名</th><th>外机号</th><th>分机号备注</th><th>绑定状态</th><th>启用状态</th><th>操作</th>
                 </tr>
               </thead>
               <tbody id="exTbody"></tbody>
@@ -2127,6 +2128,13 @@ table.atable{width:100%;table-layout:fixed;border-collapse:collapse;min-width:76
       <div class="form-row">
         <div class="form-label">分机号别名</div>
         <div class="form-field"><input class="ipt" id="exFAlias" type="text" placeholder="如 前台总机 / 程控8003"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-label">分机号备注</div>
+        <div class="form-field">
+          <input class="ipt" id="exFNote" type="text" maxlength="40" placeholder="选填，如 值班经理专用 / 预留检修位">
+          <div class="field-hint">非必填，最多 40 字，仅在分机列表展示</div>
+        </div>
       </div>
       <div class="form-row">
         <div class="form-label">使用对象</div>
@@ -5720,31 +5728,32 @@ table.atable{width:100%;table-layout:fixed;border-collapse:collapse;min-width:76
     var rows = [], i;
     function push(o){
       rows.push({
-        no:String(o.no), dev:o.dev || '', alias:o.alias || '', line:o.line || '',
+        no:String(o.no), dev:o.dev || '', alias:o.alias || '', line:o.line || '', note:o.note || '',
         users:o.users || [], bind:o.bind ? 1 : 0, on:o.on === 0 ? 0 : 1,
         fx:o.fx ? 1 : 0, tried:0, __st:'wait', __why:''
       });
     }
+    var progNote = { 2:'客服中心备用', 5:'东区楼层柜', 9:'西区楼层柜', 13:'弱电间备用', 15:'待报废' };
     for(i = 0; i < 18; i++){
-      push({ no:98892 - i, alias:'程控' + (8003 - i), fx:(i === 11 || i === 16) ? 1 : 0 });
+      push({ no:98892 - i, alias:'程控' + (8003 - i), fx:(i === 11 || i === 16) ? 1 : 0, note:progNote[i] || '' });
     }
     var front = [
       [8190, '前台3'], [8189, '前台2'],
-      [8188, '前台总机', [{n:'房务中心总台',t:'staff'}, {n:'房务中心总台',t:'staff'}, {n:'房务中心总台',t:'staff'}], 1],
+      [8188, '前台总机', [{n:'房务中心总台',t:'staff'}, {n:'房务中心总台',t:'staff'}, {n:'房务中心总台',t:'staff'}], 1, 0, '24小时值班总机，勿占线'],
       [8187, '前台4'], [8186, '前台5'], [8185, '总机备用'], [8184, '礼宾台'], [8183, '收银台'],
       [8182, '预订部', [], 0, 1], [8181, '商务中心'], [8180, '前台6']
     ];
     front.forEach(function(f, idx){
-      push({ no:f[0], alias:f[1], users:f[2] || [], bind:f[3] ? 1 : 0, on:f[4] ? 0 : 1, fx:idx === 4 ? 1 : 0 });
+      push({ no:f[0], alias:f[1], users:f[2] || [], bind:f[3] ? 1 : 0, on:f[4] ? 0 : 1, fx:idx === 4 ? 1 : 0, note:f[5] });
     });
-    push({ no:6006, alias:'测试外呼', fx:1 });
+    push({ no:6006, alias:'测试外呼', fx:1, note:'厂商联调专用，勿对外公布' });
     push({ no:6005, alias:'测试外呼2' });
-    push({ no:1983, alias:'欧阳测试' });
+    push({ no:1983, alias:'欧阳测试', note:'产品验收分机' });
     push({ no:1902, alias:'存将', on:0 });
     push({ no:1901, alias:'存将' });
-    push({ no:1880, alias:'小欧', users:[{n:'小欧',t:'staff'}], bind:1 });
+    push({ no:1880, alias:'小欧', users:[{n:'小欧',t:'staff'}], bind:1, note:'值班经理随身机' });
     push({ no:1147, alias:'1147', fx:1 });
-    push({ no:1008, alias:'晶讯江工测试', users:[{n:'1008',t:'room'}], bind:1 });
+    push({ no:1008, alias:'晶讯江工测试', users:[{n:'1008',t:'room'}], bind:1, note:'预留检修位' });
     var roomNos = [];
     for(i = 1001; i <= 1020 && roomNos.length < 16; i++){ if(i !== 1008) roomNos.push(i); }
     roomNos.forEach(function(r, idx){
@@ -5786,6 +5795,7 @@ table.atable{width:100%;table-layout:fixed;border-collapse:collapse;min-width:76
         + '<td>' + (r.dev || '<span class="ex-muted">—</span>') + '</td>'
         + '<td>' + (r.alias || '<span class="ex-muted">—</span>') + '</td>'
         + '<td>' + (r.line || '<span class="ex-muted">—</span>') + '</td>'
+        + '<td><div class="ex-note">' + (r.note || '<span class="ex-muted">—</span>') + '</div></td>'
         + '<td><span class="ex-bind' + (r.bind ? ' on' : '') + '"><i></i>' + (r.bind ? '已绑定' : '未绑定') + '</span></td>'
         + '<td><div class="ex-oncell"><label class="switch sm"><input type="checkbox" data-on="' + r.no + '"' + (r.on ? ' checked' : '') + ' aria-label="启用分机' + r.no + '"><span class="track"></span></label></div></td>'
         + '<td><div class="ex-ops">'
@@ -5796,7 +5806,7 @@ table.atable{width:100%;table-layout:fixed;border-collapse:collapse;min-width:76
         + '</div></td></tr>';
     });
     if(!view.length){
-      h = '<tr><td colspan="9"><div class="ex-empty">没有匹配的分机，试试调整搜索条件</div></td></tr>';
+      h = '<tr><td colspan="10"><div class="ex-empty">没有匹配的分机，试试调整搜索条件</div></td></tr>';
     }
     document.getElementById('exTbody').innerHTML = h;
     rpPager(document.getElementById('exPager'), list.length, EX_PAGE.page, EX_PAGE.size, function(p){
@@ -5974,6 +5984,7 @@ table.atable{width:100%;table-layout:fixed;border-collapse:collapse;min-width:76
     document.getElementById('exFNo').disabled = !!r;
     document.getElementById('exFNoHint').textContent = r ? '分机号已创建，不可修改' : '分机号唯一，仅支持数字';
     document.getElementById('exFAlias').value = r ? r.alias : '';
+    document.getElementById('exFNote').value = r ? (r.note || '') : '';
     document.getElementById('exFDev').value = r ? r.dev : '';
     document.getElementById('exFLine').value = r ? r.line : '';
     var u = r && r.users.length ? r.users[0] : null;
@@ -5994,6 +6005,7 @@ table.atable{width:100%;table-layout:fixed;border-collapse:collapse;min-width:76
   function exSaveForm(){
     var no = document.getElementById('exFNo').value.replace(/\s+/g, '');
     var alias = document.getElementById('exFAlias').value.trim();
+    var note = document.getElementById('exFNote').value.trim();
     var dev = document.getElementById('exFDev').value.trim();
     var line = document.getElementById('exFLine').value.trim();
     var userName = document.getElementById('exFUser').value.trim();
@@ -6004,7 +6016,7 @@ table.atable{width:100%;table-layout:fixed;border-collapse:collapse;min-width:76
     if(!/^\d{2,8}$/.test(no)){ toast('分机号需为 2-8 位数字'); return; }
     if(EX_PAGE.editingNo){
       var row = exFindRow(EX_PAGE.editingNo);
-      row.alias = alias; row.dev = dev; row.line = line; row.on = on;
+      row.alias = alias; row.dev = dev; row.line = line; row.on = on; row.note = note;
       row.users = userName ? [{ n:userName, t:type }] : [];
       exCloseForm(); exRender();
       toast('分机 ' + row.no + ' 已更新');
@@ -6012,7 +6024,7 @@ table.atable{width:100%;table-layout:fixed;border-collapse:collapse;min-width:76
     }
     if(exFindRow(no)){ toast('分机号 ' + no + ' 已存在，请更换'); return; }
     EX_PAGE.data.unshift({
-      no:no, dev:dev, alias:alias, line:line,
+      no:no, dev:dev, alias:alias, line:line, note:note,
       users: userName ? [{ n:userName, t:type }] : [],
       bind:0, on:on, fx:0, tried:0, __st:'wait', __why:''
     });
@@ -6122,7 +6134,7 @@ table.atable{width:100%;table-layout:fixed;border-collapse:collapse;min-width:76
 
     document.getElementById('exNewBtn').addEventListener('click', function(){ exOpenForm(null); });
     document.getElementById('exImportBtn').addEventListener('click', function(){
-      toast('演示原型：批量导入模板为「分机号, 分机号别名, 外机号」，导入后自动跳过已存在的分机号');
+      toast('演示原型：批量导入模板为「分机号, 分机号别名, 外机号, 分机号备注」，导入后自动跳过已存在的分机号');
     });
 
     document.getElementById('exFormClose').addEventListener('click', exCloseForm);
